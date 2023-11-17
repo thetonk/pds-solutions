@@ -1,14 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "mmio.h"
 #include <string.h>
-#include <pthread.h>
+#include "mmio.h"
+#include <cilk/cilk.h>
 #include <sys/time.h>
 
 #define MAX_THREADS 5
-
-pthread_t threads[MAX_THREADS];
 
 struct ThreadData{
     int threadID;
@@ -49,8 +47,7 @@ void saveResult(struct row* r, int col, int v){
     }
 }
 
-void* graphMinorRe(void *arg){
-    struct ThreadData *myData = (struct ThreadData*) arg;
+void graphMinorRe(struct ThreadData *myData){
     int dest_row, dest_col, minor_non_zeros,index;
     bool stored = false;
     for(int i = 0 ; i < myData->non_zeros; ++i){
@@ -62,7 +59,6 @@ void* graphMinorRe(void *arg){
         if(minor_non_zeros == 0){
             saveResult(&minor[dest_row], dest_col, valA[index]);
             stored = true;
-            
         }
         else{
             for(int j = 0; j < minor_non_zeros;++j){
@@ -78,10 +74,10 @@ void* graphMinorRe(void *arg){
     }
     //this array is not needed anymore
     free(myData->non_zeros_indexes);
-    return (NULL);
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
+    struct timeval start,end;
     int COL,ROW_COUNT, NON_ZEROS_PER_THREAD[MAX_THREADS];
     double read_temp;
     char *matrixFilePath, *clusterVectorPath;
@@ -133,12 +129,13 @@ int main(int argc, char *argv[]){
         NON_ZEROS_PER_THREAD[(c[rowsA[i] -1] -1) % MAX_THREADS]++;
     }
     fclose(f);
+    //end reading input files
+    //data initialization
     minor = malloc(CLUSTERS*sizeof(struct row));
     for(int i = 0; i<CLUSTERS;++i){
         minor[i].non_zeros = 0;
     }
     int counter = 0;
-    struct timeval start,end;
     struct ThreadData threadData[MAX_THREADS];
     //overhead
     for(int i = 0; i < MAX_THREADS; ++i){
@@ -154,21 +151,22 @@ int main(int argc, char *argv[]){
             }
         }
     }
+    printf("clusters %i, rows %i columns %i\n",CLUSTERS,ROW_COUNT,COL);
     //end overhead
-    gettimeofday(&start,0);
-    for(int i = 0; i < MAX_THREADS; ++i){
-        pthread_create(&threads[i],NULL, graphMinorRe, &threadData[i]);
-    }
-    for(int i = 0; i < MAX_THREADS; ++i){
-        pthread_join(threads[i],NULL);
+    //start threads
+    gettimeofday(&start, 0);
+    cilk_scope{
+        for(int i = 0; i < MAX_THREADS; ++i){
+            cilk_spawn graphMinorRe(&threadData[i]);
+        }
     }
     gettimeofday(&end,0);
-    printf("-------------\nminor matrix:\n");
-    printrows(minor,CLUSTERS);
     long secondsElapsed = end.tv_sec - start.tv_sec;
     long microsecondsElapsed = end.tv_usec - start.tv_usec;
     double totalTime = secondsElapsed + 1e-6*microsecondsElapsed;
-    printf("Processing time: %f seconds\n",totalTime);
+    //show results
+    printf("-------------\nminor matrix:\n");
+    printrows(minor,CLUSTERS);
     //cleanup
     free(rowsA);
     free(colsA);
@@ -178,5 +176,6 @@ int main(int argc, char *argv[]){
         free(minor[i].values);
     }
     free(minor);
+    printf("Processing time: %f seconds\n",totalTime);
     return 0;
 }

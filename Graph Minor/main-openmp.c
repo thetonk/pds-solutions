@@ -1,14 +1,12 @@
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <sys/time.h>
 #include "mmio.h"
 #include <string.h>
-#include <pthread.h>
-#include <sys/time.h>
 
 #define MAX_THREADS 5
-
-pthread_t threads[MAX_THREADS];
 
 struct ThreadData{
     int threadID;
@@ -21,9 +19,6 @@ struct row{
     int *columns, *values;
 };
 
-struct row *minor;
-int CLUSTERS, *c, *rowsA ,*colsA, *valA, NON_ZEROS;
-
 void printrows(struct row *matrix, int rowcount){
     for(int i = 0; i< rowcount; ++i){
         for (int j = 0; j < matrix[i].non_zeros; ++j){
@@ -31,6 +26,7 @@ void printrows(struct row *matrix, int rowcount){
         }
     }
 }
+
 //trying to save as much memory as possible, adds time complexity tho
 void saveResult(struct row* r, int col, int v){
     if(r->non_zeros == 0){
@@ -49,39 +45,8 @@ void saveResult(struct row* r, int col, int v){
     }
 }
 
-void* graphMinorRe(void *arg){
-    struct ThreadData *myData = (struct ThreadData*) arg;
-    int dest_row, dest_col, minor_non_zeros,index;
-    bool stored = false;
-    for(int i = 0 ; i < myData->non_zeros; ++i){
-        stored = false;
-        index = myData->non_zeros_indexes[i];
-        dest_row = c[rowsA[index]-1] -1;
-        dest_col = c[colsA[index]-1]-1;
-        minor_non_zeros = minor[dest_row].non_zeros;
-        if(minor_non_zeros == 0){
-            saveResult(&minor[dest_row], dest_col, valA[index]);
-            stored = true;
-            
-        }
-        else{
-            for(int j = 0; j < minor_non_zeros;++j){
-                if(minor[dest_row].columns[j] == dest_col){
-                    minor[dest_row].values[j] += valA[index];
-                    stored = true;
-                }
-            }
-        }
-        if(!stored){ //new column found
-            saveResult(&minor[dest_row], dest_col,valA[index]);
-        }
-    }
-    //this array is not needed anymore
-    free(myData->non_zeros_indexes);
-    return (NULL);
-}
-
 int main(int argc, char *argv[]){
+    int CLUSTERS, *c, *rowsA ,*colsA, *valA, NON_ZEROS;
     int COL,ROW_COUNT, NON_ZEROS_PER_THREAD[MAX_THREADS];
     double read_temp;
     char *matrixFilePath, *clusterVectorPath;
@@ -133,6 +98,9 @@ int main(int argc, char *argv[]){
         NON_ZEROS_PER_THREAD[(c[rowsA[i] -1] -1) % MAX_THREADS]++;
     }
     fclose(f);
+    //end reading input files
+    //data initialization
+    struct row *minor;
     minor = malloc(CLUSTERS*sizeof(struct row));
     for(int i = 0; i<CLUSTERS;++i){
         minor[i].non_zeros = 0;
@@ -155,24 +123,55 @@ int main(int argc, char *argv[]){
         }
     }
     //end overhead
+    //start threads
+    omp_set_dynamic(0);
+    omp_set_num_threads(MAX_THREADS);
     gettimeofday(&start,0);
-    for(int i = 0; i < MAX_THREADS; ++i){
-        pthread_create(&threads[i],NULL, graphMinorRe, &threadData[i]);
+    #pragma omp parallel
+    {
+        //thread code region
+        int dest_row, dest_col, minor_non_zeros,index;
+        int threadID = omp_get_thread_num();
+        bool stored = false;
+        //each thread has its own data in the threadData array, index is selected according to its ID.
+        for(int i = 0 ; i < threadData[threadID].non_zeros; ++i){
+            stored = false;
+            index = threadData[threadID].non_zeros_indexes[i];
+            dest_row = c[rowsA[index]-1] -1;
+            dest_col = c[colsA[index]-1]-1;
+            minor_non_zeros = minor[dest_row].non_zeros;
+            if(minor_non_zeros == 0){
+                saveResult(&minor[dest_row], dest_col, valA[index]);
+                stored = true;
+                
+            }
+            else{
+                for(int j = 0; j < minor_non_zeros;++j){
+                    if(minor[dest_row].columns[j] == dest_col){
+                        minor[dest_row].values[j] += valA[index];
+                        stored = true;
+                    }
+                }
+            }
+            if(!stored){ //new column found
+                saveResult(&minor[dest_row], dest_col,valA[index]);
+            }
+        }
+        //this array is not needed anymore
+        free(threadData[threadID].non_zeros_indexes);
     }
-    for(int i = 0; i < MAX_THREADS; ++i){
-        pthread_join(threads[i],NULL);
-    }
-    gettimeofday(&end,0);
+    gettimeofday(&end, 0);
+    //memory cleanup
+    free(rowsA);
+    free(colsA);
+    free(valA);
+    //show results
     printf("-------------\nminor matrix:\n");
     printrows(minor,CLUSTERS);
     long secondsElapsed = end.tv_sec - start.tv_sec;
     long microsecondsElapsed = end.tv_usec - start.tv_usec;
     double totalTime = secondsElapsed + 1e-6*microsecondsElapsed;
     printf("Processing time: %f seconds\n",totalTime);
-    //cleanup
-    free(rowsA);
-    free(colsA);
-    free(valA);
     for(int i = 0; i < CLUSTERS;++i){
         free(minor[i].columns);
         free(minor[i].values);

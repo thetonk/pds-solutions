@@ -36,12 +36,23 @@ void saveResult(struct row* r, int col, int v){
     }
 }
 
-int main(void){
+int main(int argc, char *argv[]){
     int mm_non_zeros,CLUSTERS = 0, ROW_COUNT,COL,*c, *rowsA,*colsA, *valA, dest_r, dest_col;
     double read_temp;
+    char *matrixFilePath, *clusterVectorPath;
+    if(argc == 3){
+        //use user defined paths from command line
+        matrixFilePath = argv[1];
+        clusterVectorPath = argv[2];
+    } 
+    else{
+        //use our default
+        matrixFilePath = "data/dwt_2680.mtx";
+        clusterVectorPath = "data/out10-dwt.txt";
+    }
     MM_typecode matcode;
-    FILE* f = fopen("data/dwt_2680.mtx","r");
-    FILE* c_f = fopen("data/out10-dwt.txt","r");
+    FILE* f = fopen(matrixFilePath,"r");
+    FILE* c_f = fopen(clusterVectorPath,"r");
     if(f == NULL || c_f == NULL){
         printf("Error! input files not found!\n");
         exit(1);
