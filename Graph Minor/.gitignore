@@ -1,5 +1,6 @@
 data/
 tests/
+logs/
 .vscode/
 *.log
 *.o

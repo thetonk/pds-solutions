@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    printf("clusters %i, rows %i columns %i\n",CLUSTERS,ROW_COUNT,COL);
+    //printf("clusters %i, rows %i columns %i\n",CLUSTERS,ROW_COUNT,COL);
     //end overhead
     //start threads
     gettimeofday(&start, 0);
