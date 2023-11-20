@@ -5,3 +5,4 @@ logs/
 *.log
 *.o
 test*
+report/_minted-report

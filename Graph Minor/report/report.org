@@ -1,0 +1,150 @@
+#+title:Parallel and Distributed Systems - Graph Minor Report
+#+AUTHOR: Spyridon Baltsas - AEM: 10443
+#+LATEX_HEADER_EXTRA:\input{~/.doom.d/fancyLatexTemplate.tex}
+#+STARTUP:inline-images
+#+STARTUP:latexpreview
+#+OPTIONS: toc:nil date:nil
+
+* Summary
+This report is about my proposed solution for the Graph Minor - Graph Grouping problem. More specifically, here will be briefly presented the algorithm that I have implemented for my approach, an estimate for its time complexity, its general efficiency in handling various datasets. In addition, we may see how it behaves when we use several Parallelization libraries and different number of threads each time. The source code and building instructions can be found (enter github link).
+* The algorithm
+The algorithm was designed with the following points in mind:
+- Memory efficiency, since we may have to process very large datasets of sparse matrices with it
+- Time complexity, to make the most out the cycles of our CPU as possible
+- Parallelization. Split the data with the most efficient way possible, and keep the synchronization (mutexes/semaphores) at a minimum, without any data races of course
+** Single Thread
+The program takes as inputs 2 files, the first one contains the sparse matrix of the graph in matrix market (MM) format, and the second one is the vector c, which has information about which node belongs to which cluster, thus it has a length equal to the nodes of the graph. Equivalently, it has length equal to the amount of the non zero values in the adjacency matrix on the graph, in our case the sparse matrix in MM format. It stores the input matrix in COO format, but the Graph Minor's adjacency matrix in a format quite similar to CSC (in code this is an array of ~struct row~), which contains the following data:
+1. The non zero elements of the row (~int non_zeros~)
+2. The columns which contain the non zero elements of the row as an array (~int *columns~)
+3. An array of the non zero values of the row (~int *values~).
+Let A the input sparse matrix of graph and M the sparse matrix of the desired graph minor. The program calculates the matrix minor without the need for matrix Ω of the specification, thanks to the following observation:
+- The value of the i-th non zero element of A input matrix will be added up to the Graph Minor adjacency matrix element in row equal to c[rowsA[i]-1]-1 and in column c[colsA[i]-1]-1. Or, in other words:
+\begin{equation}
+\label{eq:1}
+M[c[rowsA[i]-1]-1, c[colsA[i]-1]-1] += valuesA[i]
+\end{equation}
+The (-1)s are needed because we assume the matrix starts from 0 and not 1.
+** Multi-threaded
+The multi-threaded version of the algorithm use the same observation as above, but with some changes, in order to get parallelized effectively, without the need of synchronization using mutexes and signals. Therefore, we load each thread with a data structure (in code this is an array of ~struct ThreadData~) containing the following information:
+1. the ID of the thread (~int threadID~)
+2. The amount of matrix A's non zeros whose thread is responsible for (~int non_zeros~)
+3. An array of indexes of the matrix A's non zeros (~int *non_zeros_indexes~)
+We split the non zero elements of matrix A (COO format) to the responsible threads according to which row of the graph minor is element's destination. Each thread is responsible only for a distinct range of rows in the resulting graph minor matrix. Let N the number of available threads. Again, we assume that matrix starts from 0. Thus, for this job we use a modulo operation as seen in source code:
+\begin{equation}
+\label{eq:2}
+c[rowsA[i] -1] -1 \mod{N}
+\end{equation}
+To be more clear, this is the part of the code which is responsible for this:
+#+begin_src c
+  for(int i = 0; i < MAX_THREADS; ++i){
+        threadData[i].threadID = i;
+        threadData[i].non_zeros_indexes = malloc(NON_ZEROS_PER_THREAD[i]*sizeof(int));
+        threadData[i].non_zeros = NON_ZEROS_PER_THREAD[i];
+        counter = 0;
+        for(int j = 0; j < NON_ZEROS; ++j){
+            //split data among threads according to which row they belong in cluster adjacency matrix
+            if((c[rowsA[j] -1 ] -1) % MAX_THREADS == i){
+                threadData[i].non_zeros_indexes[counter] = j;
+                counter++;
+            }
+        }
+    }
+#+end_src
+This way, each thread can process its data independently from each other, without any race conditions. This of course, adds a small overhead.
+** Time complexity
+Let n be the number of non zero elements of the input matrix, and m the number of non zero elements in the graph minor matrix. An approximation of the complexity of sequential algorithm would be $\mathcal{O}(m\cdot n)$. In case of multi-threaded, would be $\mathcal{O}{\left(\frac{m\cdot n}{N}\right)}$ where N is the number of available threads.
+* Test Specifications
+Please take note that on the following processing times the duration of the overhead was omitted. The following operations were considered as "overhead", as it may be seen from source code as well:
+- I/O Operations. In our case, reading the data from the matrix market and vector files and printing to ~stdout~ the resulting sparse matrix.
+- Initialization of the required data structures before actually processing the input data.
+** Technical Specifications
+The computer that was used to produce the following result times had the following specifications, processing power wise:
+- Intel Core i5-8300H @ 2.30 GHz (4 cores, 8 threads)
+- 8GB DDR4 RAM @ 2667 MHz
+Finally, the operating system was Debian Linux.
+** Test Dataset Specifications
+|--------------+------------+------------+-----------------|
+| matrix name  | rows       | columns    | non zero values |
+|--------------+------------+------------+-----------------|
+| ca2010.mtx   | 710,145    | 710,145    | 3,489,366       |
+| pa2010.mtx   | 421,545    | 421,545    | 2,058,462       |
+| ri2010.mtx   | 25,181     | 25,181     | 125,750         |
+| tx2010.mtx   | 914,231    | 914,231    | 4,456,272       |
+| nj2010.mtx   | 169,588    | 169,588    | 829,912         |
+| road usa.mtx | 23,947,347 | 23,947,347 | 57,708,624      |
+|--------------+------------+------------+-----------------|
+* Results
+** Single Thread
+#+ATTR_LATEX: :align |c|c|
+|--------------+---------------------------|
+| Datasets     | Processing time (seconds) |
+|--------------+---------------------------|
+| road usa.mtx |                  2.429773 |
+| ca2010.mtx   |                  0.146844 |
+| pa2010.mtx   |                  0.081838 |
+| ri2010.mtx   |                  0.006248 |
+| tx2010.mtx   |                  0.181871 |
+| nj2010.mtx   |                  0.032843 |
+|--------------+---------------------------|
+** Multi-threaded
+The parallelization libraries that were used are according to the specification, P-threads, OpenMP and OpenCilk. The tests used 2,4,8,16,32,64 and 128 threads each time. It was noticed that above 128 there was no point of testing, because the result times were either similar to these ones of 128 threads or even worse, because the threads were too many for the processor to handle. In addition, a significant speedup is noticed when threads are between 4 and 8 , or even 4 and 16 in some cases, depending on the dataset. Last but not least it appears that OpenCilk is more efficient than the other two when we increase the number of threads and openMP tends to be a little more efficient than pthreads.
+*** road usa.mtx
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Processing Time in seconds |          |          |          |          |          |          |          |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| threads                    |        2 |        4 |        8 |       16 |       32 |       64 |      128 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| pthreads                   | 1.505156 | 0.951662 | 0.998748 | 1.846579 | 2.103463 | 2.219436 | 2.397696 |
+| openMP                     | 1.555636 | 0.863548 | 0.893506 | 1.757446 | 2.008718 | 2.145974 | 2.803710 |
+| openCilk                   | 1.248277 | 0.940150 | 1.030065 | 1.393734 | 1.373181 | 1.663869 | 1.986563 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+*** ca2010.mtx
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Processing Time in seconds |          |          |          |          |          |          |          |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Threads                    |        2 |        4 |        8 |       16 |       32 |       64 |      128 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| pthreads                   | 0.096133 | 0.057492 | 0.052624 | 0.080519 | 0.119331 | 0.054552 | 0.140369 |
+| openMP                     | 0.101188 | 0.045476 | 0.066414 | 0.072120 | 0.092176 | 0.050001 | 0.068304 |
+| openCilk                   | 0.064587 | 0.044315 | 0.019921 | 0.026820 | 0.022341 | 0.040438 | 0.035038 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+*** pa2010.mtx
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Processing Time in seconds |          |          |          |          |          |          |          |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Threads                    |        2 |        4 |        8 |       16 |       32 |       64 |      128 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| pthreads                   | 0.054274 | 0.025302 | 0.018334 | 0.036197 | 0.037017 | 0.062481 | 0.092057 |
+| openMP                     | 0.057318 | 0.028885 | 0.027781 | 0.045482 | 0.055582 | 0.058792 | 0.034657 |
+| openCilk                   | 0.037570 | 0.028561 | 0.011196 | 0.034702 | 0.060241 | 0.015759 | 0.023541 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+*** ri2010.mtx
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Processing Time in seconds |          |          |          |          |          |          |          |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Threads                    |        2 |        4 |        8 |       16 |       32 |       64 |      128 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| pthreads                   | 0.002772 | 0.001712 | 0.006155 | 0.001938 | 0.002433 | 0.004850 | 0.008609 |
+| openMP                     | 0.003274 | 0.001714 | 0.002083 | 0.003226 | 0.002591 | 0.003680 | 0.006999 |
+| openCilk                   | 0.004340 | 0.002752 | 0.006254 | 0.002172 | 0.001495 | 0.001623 | 0.021401 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+*** tx2010.mtx
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Processing Time in seconds |          |          |          |          |          |          |          |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Threads                    |        2 |        4 |        8 |       16 |       32 |       64 |      128 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| pthreads                   | 0.119700 | 0.079568 | 0.079422 | 0.089214 | 0.166502 | 0.171484 | 0.082590 |
+| openMP                     | 0.111896 | 0.082355 | 0.060566 | 0.093807 | 0.060427 | 0.071740 | 0.086510 |
+| openCilk                   | 0.076761 | 0.038826 | 0.039355 | 0.023726 | 0.029118 | 0.040585 | 0.051896 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+*** nj2010.mtx
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Processing Time in seconds |          |          |          |          |          |          |          |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| Threads                    |        2 |        4 |        8 |       16 |       32 |       64 |      128 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
+| pthreads                   | 0.018465 | 0.009591 | 0.008438 | 0.010535 | 0.010537 | 0.013693 | 0.020149 |
+| openMP                     | 0.019674 | 0.010379 | 0.009485 | 0.010522 | 0.011116 | 0.011332 | 0.028538 |
+| openCilk                   | 0.025978 | 0.007795 | 0.024413 | 0.007473 | 0.016885 | 0.011283 | 0.015288 |
+|----------------------------+----------+----------+----------+----------+----------+----------+----------|
