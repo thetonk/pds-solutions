@@ -37,7 +37,7 @@ void saveResult(struct row* r, int col, int v){
 }
 
 int main(int argc, char *argv[]){
-    int mm_non_zeros,CLUSTERS = 0, ROW_COUNT,COL,*c, *rowsA,*colsA, *valA, dest_r, dest_col;
+    int mm_non_zeros,CLUSTERS = 0, ROW_COUNT,COL,*c, *rowsA,*colsA, *valA, dest_r, dest_col,file_non_zeros;
     double read_temp;
     char *matrixFilePath, *clusterVectorPath;
     if(argc == 3){
@@ -47,8 +47,8 @@ int main(int argc, char *argv[]){
     } 
     else{
         //use our default
-        matrixFilePath = "data/dwt_2680.mtx";
-        clusterVectorPath = "data/out10-dwt.txt";
+        matrixFilePath = "data/blckhole.mtx";
+        clusterVectorPath = "data/out7.txt";
     }
     MM_typecode matcode;
     FILE* f = fopen(matrixFilePath,"r");
@@ -58,7 +58,17 @@ int main(int argc, char *argv[]){
         exit(1);
     }
     mm_read_banner(f,&matcode);
-    mm_read_mtx_crd_size(f,&ROW_COUNT,&COL,&mm_non_zeros);
+    mm_read_mtx_crd_size(f,&ROW_COUNT,&COL,&file_non_zeros);
+    if(mm_is_hermitian(matcode)){
+        printf("Error! Hermitian matrices are not supported!\n");
+        exit(2);
+    }
+    if(mm_is_symmetric(matcode) || mm_is_skew(matcode)){
+        mm_non_zeros = 2*file_non_zeros; //make it double temporarily, because file contains only elements of below triangle of matrix
+    }
+    else{
+        mm_non_zeros = file_non_zeros;
+    }
     c = malloc(ROW_COUNT*sizeof(int));
     rowsA = malloc(mm_non_zeros*sizeof(int));
     colsA = malloc(mm_non_zeros*sizeof(int));
@@ -72,7 +82,8 @@ int main(int argc, char *argv[]){
         }
     }
     fclose(c_f);
-    for(int i = 0; i < mm_non_zeros; ++i){
+    int counter = 0, actual_non_zeros = 0;
+    for(int i = 0; i < file_non_zeros; ++i){
         if(mm_is_pattern(matcode)){
             fscanf(f,"%d %d\n", &rowsA[i],&colsA[i]);
             valA[i] = 1;
@@ -87,9 +98,39 @@ int main(int argc, char *argv[]){
             }
             valA[i] = (int) read_temp;
         }
-        //printf("%d %d %lg\n", rowsA[i], colsA[i],valA[i]);
+        if(mm_is_symmetric(matcode)){
+            if(rowsA[i] != colsA[i]){
+                rowsA[file_non_zeros+counter] = colsA[i];
+                colsA[file_non_zeros+counter] = rowsA[i];
+                valA[file_non_zeros+counter] = valA[i];
+                counter++;
+                actual_non_zeros += 2;
+            }
+            else{ //diagonal element
+                actual_non_zeros++;
+            }
+        }
+        else if(mm_is_skew(matcode)){
+            if(rowsA[i] != colsA[i]){
+                rowsA[file_non_zeros+counter] = colsA[i];
+                colsA[file_non_zeros+counter] = rowsA[i];
+                valA[file_non_zeros+counter] = -valA[i];
+                counter++;
+                actual_non_zeros += 2;
+            }
+            else{ //diagonal element
+                actual_non_zeros++;
+            }
+        }
     }
     fclose(f);
+    if(mm_is_symmetric(matcode) || mm_is_skew(matcode)){
+        mm_non_zeros = actual_non_zeros;
+        //save memory
+        rowsA = realloc(rowsA, mm_non_zeros*sizeof(int));
+        colsA = realloc(colsA, mm_non_zeros*sizeof(int));
+        valA = realloc(valA,mm_non_zeros*sizeof(int));
+    }
     /*int r[] = {1,1,2,2,3}, co[] = {1,2,1,3,1}, v[] = {1,1,1,1,1}; //represents mm file
     int c[] = {1,1,2};*/
     struct row *minor = malloc(CLUSTERS*sizeof(struct row));
@@ -137,4 +178,5 @@ int main(int argc, char *argv[]){
         free(minor[i].values);
     }
     free(minor);
+    return 0;
 }

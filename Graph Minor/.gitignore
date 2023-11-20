@@ -4,3 +4,4 @@ logs/
 .vscode/
 *.log
 *.o
+test*

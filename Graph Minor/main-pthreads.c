@@ -82,7 +82,7 @@ void* graphMinorRe(void *arg){
 }
 
 int main(int argc, char *argv[]){
-    int COL,ROW_COUNT, NON_ZEROS_PER_THREAD[MAX_THREADS];
+    int COL,ROW_COUNT, NON_ZEROS_PER_THREAD[MAX_THREADS], file_non_zeros;
     double read_temp;
     char *matrixFilePath, *clusterVectorPath;
     if(argc == 3){
@@ -92,8 +92,8 @@ int main(int argc, char *argv[]){
     } 
     else{
         //use our default
-        matrixFilePath = "data/dwt_2680.mtx";
-        clusterVectorPath = "data/out10-dwt.txt";
+        matrixFilePath = "data/blckhole.mtx";
+        clusterVectorPath = "data/out7.txt";
     }
     MM_typecode matcode;
     FILE* f = fopen(matrixFilePath,"r");
@@ -103,7 +103,17 @@ int main(int argc, char *argv[]){
         exit(1);
     }
     mm_read_banner(f,&matcode);
-    mm_read_mtx_crd_size(f,&ROW_COUNT,&COL,&NON_ZEROS);
+    mm_read_mtx_crd_size(f,&ROW_COUNT,&COL,&file_non_zeros);
+    if(mm_is_hermitian(matcode)){
+        printf("Error! Hermitian matrices are not supported!\n");
+        exit(2);
+    }
+    if(mm_is_symmetric(matcode) || mm_is_skew(matcode)){
+        NON_ZEROS = 2*file_non_zeros; //make it double temporarily, because file contains only elements of below triangle of matrix
+    }
+    else{
+        NON_ZEROS = file_non_zeros;
+    }
     c = malloc(ROW_COUNT*sizeof(int));
     rowsA = malloc(NON_ZEROS*sizeof(int));
     colsA = malloc(NON_ZEROS*sizeof(int));
@@ -119,7 +129,8 @@ int main(int argc, char *argv[]){
         }
     }
     fclose(c_f);
-    for(int i = 0; i < NON_ZEROS; ++i){
+    int counter = 0, actual_non_zeros = 0;
+    for(int i = 0; i < file_non_zeros; ++i){
         if(mm_is_pattern(matcode)){
             fscanf(f,"%d %d\n", &rowsA[i],&colsA[i]);
             valA[i] = 1;
@@ -130,14 +141,47 @@ int main(int argc, char *argv[]){
             if((int) read_temp == 0) read_temp = 1; 
             valA[i] = read_temp;
         }
+        if(mm_is_symmetric(matcode)){
+            if(rowsA[i] != colsA[i]){
+                rowsA[file_non_zeros+counter] = colsA[i];
+                colsA[file_non_zeros+counter] = rowsA[i];
+                valA[file_non_zeros+counter] = valA[i];
+                NON_ZEROS_PER_THREAD[(c[rowsA[file_non_zeros+counter] -1] -1) % MAX_THREADS]++;
+                counter++;
+                actual_non_zeros += 2;
+            }
+            else{ //diagonal element
+                actual_non_zeros++;
+            }
+        }
+        else if(mm_is_skew(matcode)){
+            if(rowsA[i] != colsA[i]){
+                rowsA[file_non_zeros+counter] = colsA[i];
+                colsA[file_non_zeros+counter] = rowsA[i];
+                valA[file_non_zeros+counter] = -valA[i];
+                NON_ZEROS_PER_THREAD[(c[rowsA[file_non_zeros+counter] -1] -1) % MAX_THREADS]++;
+                counter++;
+                actual_non_zeros += 2;
+            }
+            else{ //diagonal element
+                actual_non_zeros++;
+            }
+        }
         NON_ZEROS_PER_THREAD[(c[rowsA[i] -1] -1) % MAX_THREADS]++;
     }
     fclose(f);
+    if(mm_is_symmetric(matcode) || mm_is_skew(matcode)){
+        NON_ZEROS = actual_non_zeros;
+        //save memory
+        rowsA = realloc(rowsA, NON_ZEROS*sizeof(int));
+        colsA = realloc(colsA, NON_ZEROS*sizeof(int));
+        valA = realloc(valA,NON_ZEROS*sizeof(int));
+    }
     minor = malloc(CLUSTERS*sizeof(struct row));
     for(int i = 0; i<CLUSTERS;++i){
         minor[i].non_zeros = 0;
     }
-    int counter = 0;
+    counter = 0;
     struct timeval start,end;
     struct ThreadData threadData[MAX_THREADS];
     //overhead
