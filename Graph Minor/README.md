@@ -20,7 +20,8 @@ Can be built with `make opencilk`. The binary is called `test-opencilk`.
 Datasets can be passed into the program from the terminal using the following 
 syntax:
 
-`$ <binary name> <path to matrix market file> <path to file containing vector c>`
+`$ <binary name> <path to matrix market file> <path to file containing vector c> <number of threads>`
 
+Number of threads argument is available only on multithreaded programs, that is pthreads, openmp and opencilk.
 ## Deleting build files
 Easy as `make clean`. To delete the build files and the binaries too, use `make purge`.

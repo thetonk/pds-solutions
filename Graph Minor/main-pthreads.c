@@ -6,9 +6,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#define MAX_THREADS 5
 
-pthread_t threads[MAX_THREADS];
 
 struct ThreadData{
     int threadID;
@@ -82,18 +80,25 @@ void* graphMinorRe(void *arg){
 }
 
 int main(int argc, char *argv[]){
-    int COL,ROW_COUNT, NON_ZEROS_PER_THREAD[MAX_THREADS], file_non_zeros;
+    int COL,ROW_COUNT, MAX_THREADS, file_non_zeros;
     double read_temp;
     char *matrixFilePath, *clusterVectorPath;
-    if(argc == 3){
+    switch(argc){
         //use user defined paths from command line
-        matrixFilePath = argv[1];
-        clusterVectorPath = argv[2];
-    } 
-    else{
-        //use our default
-        matrixFilePath = "data/blckhole.mtx";
-        clusterVectorPath = "data/out7.txt";
+        case 4:
+            MAX_THREADS = atoi(argv[3]);
+            matrixFilePath = argv[1];
+            clusterVectorPath = argv[2];
+            break;
+        case 3:
+            matrixFilePath = argv[1];
+            clusterVectorPath = argv[2];
+            break;
+        //or use our defaults
+        default:
+            MAX_THREADS = 5;
+            matrixFilePath = "data/blckhole.mtx";
+            clusterVectorPath = "data/out7.txt";
     }
     MM_typecode matcode;
     FILE* f = fopen(matrixFilePath,"r");
@@ -118,6 +123,7 @@ int main(int argc, char *argv[]){
     rowsA = malloc(NON_ZEROS*sizeof(int));
     colsA = malloc(NON_ZEROS*sizeof(int));
     valA = malloc(NON_ZEROS*sizeof(int));
+    int NON_ZEROS_PER_THREAD[MAX_THREADS];
     memset(c,0, ROW_COUNT*sizeof(int)); //just in case
     memset(NON_ZEROS_PER_THREAD,0,MAX_THREADS*sizeof(int));
     //reading input files
@@ -200,6 +206,7 @@ int main(int argc, char *argv[]){
     }
     //end overhead
     gettimeofday(&start,0);
+    pthread_t threads[MAX_THREADS];
     for(int i = 0; i < MAX_THREADS; ++i){
         pthread_create(&threads[i],NULL, graphMinorRe, &threadData[i]);
     }

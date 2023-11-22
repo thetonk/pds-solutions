@@ -75,17 +75,17 @@ Finally, the operating system was Debian Linux.
 |--------------+------------+------------+-----------------|
 * Results
 ** Single Thread
-#+ATTR_LATEX: :align |c|c|
-|--------------+---------------------------|
-| Datasets     | Processing time (seconds) |
-|--------------+---------------------------|
-| road usa.mtx |                  2.429773 |
-| ca2010.mtx   |                  0.146844 |
-| pa2010.mtx   |                  0.081838 |
-| ri2010.mtx   |                  0.006248 |
-| tx2010.mtx   |                  0.181871 |
-| nj2010.mtx   |                  0.032843 |
-|--------------+---------------------------|
+#+ATTR_LATEX: :align |c|c|c|
+|--------------+---------------------------+-----------------------|
+| Datasets     | Sequential time (seconds) | Matlab time (seconds) |
+|--------------+---------------------------+-----------------------|
+| road usa.mtx |                  2.429773 |               4.80690 |
+| ca2010.mtx   |                  0.146844 |               0.12822 |
+| pa2010.mtx   |                  0.081838 |               0.07003 |
+| ri2010.mtx   |                  0.006248 |               0.00402 |
+| tx2010.mtx   |                  0.181871 |               0.17025 |
+| nj2010.mtx   |                  0.032843 |               0.02731 |
+|--------------+---------------------------+-----------------------|
 ** Multi-threaded
 The parallelization libraries that were used are according to the specification, P-threads, OpenMP and OpenCilk. The tests used 2,4,8,16,32,64 and 128 threads each time. It was noticed that above 128 there was no point of testing, because the result times were either similar to these ones of 128 threads or even worse, because the threads were too many for the processor to handle. In addition, a significant speedup is noticed when threads are between 4 and 8 , or even 4 and 16 in some cases, depending on the dataset. Last but not least it appears that OpenCilk is more efficient than the other two when we increase the number of threads and openMP tends to be a little more efficient than pthreads.
 \pagebreak

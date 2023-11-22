@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-//it may be slow and clunky, I know
+//idk anymore
 struct row{
     int non_zeros;
     int *columns, *values;
@@ -18,7 +18,7 @@ void printrows(struct row *matrix, int rowcount){
         }
     }
 }
-//trying to save as much memory as possible, adds time complexity tho
+//trying to save as much memory as possible
 void saveResult(struct row* r, int col, int v){
     if(r->non_zeros == 0){
         r->columns = malloc(sizeof(int));

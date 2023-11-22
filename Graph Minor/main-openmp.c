@@ -6,7 +6,6 @@
 #include "mmio.h"
 #include <string.h>
 
-#define MAX_THREADS 5
 
 struct ThreadData{
     int threadID;
@@ -46,19 +45,26 @@ void saveResult(struct row* r, int col, int v){
 }
 
 int main(int argc, char *argv[]){
-    int CLUSTERS, *c, *rowsA ,*colsA, *valA, NON_ZEROS, file_non_zeros;
-    int COL,ROW_COUNT, NON_ZEROS_PER_THREAD[MAX_THREADS];
+    int CLUSTERS, *c, *rowsA ,*colsA, *valA, NON_ZEROS, file_non_zeros, MAX_THREADS;
+    int COL,ROW_COUNT;
     double read_temp;
     char *matrixFilePath, *clusterVectorPath;
-    if(argc == 3){
+    switch(argc){
         //use user defined paths from command line
-        matrixFilePath = argv[1];
-        clusterVectorPath = argv[2];
-    } 
-    else{
-        //use our default
-        matrixFilePath = "data/blckhole.mtx";
-        clusterVectorPath = "data/out7.txt";
+        case 4:
+            MAX_THREADS = atoi(argv[3]);
+            matrixFilePath = argv[1];
+            clusterVectorPath = argv[2];
+            break;
+        case 3:
+            matrixFilePath = argv[1];
+            clusterVectorPath = argv[2];
+            break;
+        //or use our defaults
+        default:
+            MAX_THREADS = 5;
+            matrixFilePath = "data/blckhole.mtx";
+            clusterVectorPath = "data/out7.txt";
     }
     MM_typecode matcode;
     FILE* f = fopen(matrixFilePath,"r");
@@ -84,6 +90,7 @@ int main(int argc, char *argv[]){
     colsA = malloc(NON_ZEROS*sizeof(int));
     valA = malloc(NON_ZEROS*sizeof(int));
     memset(c,0, ROW_COUNT*sizeof(int)); //just in case
+    int NON_ZEROS_PER_THREAD[MAX_THREADS];
     memset(NON_ZEROS_PER_THREAD,0,MAX_THREADS*sizeof(int));
     //reading input files
     for(int i = 0; i < ROW_COUNT;++i){
