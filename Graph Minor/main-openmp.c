@@ -26,7 +26,27 @@ void printrows(struct row *matrix, int rowcount){
     }
 }
 
-//trying to save as much memory as possible, adds time complexity tho
+//converts custom CSC format into COO, if needed, for the sake of completeness
+void CSCtoCOO(struct row *matrix, int n, int* rows, int* columns,int* values){
+    int non_zeros = 0, count = 0;
+    // add the non zeros of each row
+    for(int i = 0 ; i < n; ++i){
+        non_zeros += matrix[i].non_zeros;
+    }
+    rows = malloc(non_zeros*sizeof(int));
+    columns = malloc(non_zeros*sizeof(int));
+    values = malloc(non_zeros*sizeof(int));
+    for(int i = 0; i < n; ++i){
+        for(int j = 0; j < matrix[i].non_zeros; ++j){
+            rows[count] = i;
+            columns[count] = matrix[i].columns[j];
+            values[count] = matrix[i].values[j];
+            count++;
+        }
+    }
+}
+
+//trying to save as much memory as possible
 void saveResult(struct row* r, int col, int v){
     if(r->non_zeros == 0){
         r->columns = malloc(sizeof(int));
@@ -219,6 +239,13 @@ int main(int argc, char *argv[]){
     //show results
     printf("-------------\nminor matrix:\n");
     printrows(minor,CLUSTERS);
+    /*
+    In case of converting back to COO, it can be done like this. It's just a memory rearrangement.
+
+    int *rowsMinor, *colsMinor, *valuesMinor;
+    CSCtoCOO(minor, CLUSTERS, rowsMinor, colsMinor, valuesMinor);
+
+    */
     long secondsElapsed = end.tv_sec - start.tv_sec;
     long microsecondsElapsed = end.tv_usec - start.tv_usec;
     double totalTime = secondsElapsed + 1e-6*microsecondsElapsed;

@@ -6,7 +6,7 @@
 #+OPTIONS: toc:nil date:nil
 
 * Summary
-This report is about my proposed solution for the Graph Minor - Graph Grouping problem. More specifically, here will be briefly presented the algorithm that I have implemented for my approach, an estimate for its time complexity, its general efficiency in handling various datasets. In addition, we may see how it behaves when we use several Parallelization libraries and different number of threads each time. The source code and building instructions can be found (enter github link).
+This report is about my proposed solution for the Graph Minor problem. To be specific, here will be briefly presented the algorithm that I have implemented for my approach, an estimate for its time complexity, its general efficiency in handling various datasets. In addition, we may see how it behaves when we use several Parallelization libraries and different number of threads each time. The source code, building instructions and how to pass arguments to the compiled binary can be found [[https://github.com/thetonk/pds-solutions/tree/main/Graph%20Minor][/in this repository/]] and its [[https://github.com/thetonk/pds-solutions/blob/main/Graph%20Minor/README.md][/README/]].
 * The algorithm
 The algorithm was designed with the following points in mind:
 - Memory efficiency, since we may have to process very large datasets of sparse matrices with it
@@ -56,7 +56,7 @@ Let n be the number of non zero elements of the input matrix, and m the number o
 * Test Specifications
 Please take note that on the following processing times the duration of the overhead was omitted. The following operations were considered as "overhead", as it may be seen from source code as well:
 - I/O Operations. In our case, reading the data from the matrix market and vector files and printing to ~stdout~ the resulting sparse matrix.
-- Initialization of the required data structures before actually processing the input data.
+- Initialization and loading the required data structures before actually processing the input data.
 ** Technical Specifications
 The computer that was used to produce the following result times had the following specifications, processing power wise:
 - Intel Core i5-8300H @ 2.30 GHz (4 cores, 8 threads)
@@ -87,7 +87,7 @@ Finally, the operating system was Debian Linux.
 | nj2010.mtx   |                  0.032843 |               0.02731 |
 |--------------+---------------------------+-----------------------|
 ** Multi-threaded
-The parallelization libraries that were used are according to the specification, P-threads, OpenMP and OpenCilk. The tests used 2,4,8,16,32,64 and 128 threads each time. It was noticed that above 128 there was no point of testing, because the result times were either similar to these ones of 128 threads or even worse, because the threads were too many for the processor to handle. In addition, a significant speedup is noticed when threads are between 4 and 8 , or even 4 and 16 in some cases, depending on the dataset. Last but not least it appears that OpenCilk is more efficient than the other two when we increase the number of threads and openMP tends to be a little more efficient than pthreads.
+The parallelization libraries that were used are according to the specification, P-threads, OpenMP and OpenCilk. The tests used 2,4,8,16,32,64 and 128 threads each time. It was noticed that above 128 there was no point of testing, because the result times were either similar to these ones of 128 threads or even worse, because the threads were too many for the processor to handle. In addition, a significant speedup is noticed when threads are between 4 and 8 , or even 4 and 16 in some cases, depending on the dataset. Last but not least it appears that OpenCilk is more efficient than the other two when we increase the number of threads and OpenMP tends to be a little more efficient than pthreads.
 \pagebreak
 *** Charts
 Here are the result times of the parallel algorithm using the required libraries for various number of threads, summed up into charts.
