@@ -18,6 +18,27 @@ void printrows(struct row *matrix, int rowcount){
         }
     }
 }
+
+//converts custom CSC format into COO, if needed, for the sake of completeness
+void CSCtoCOO(struct row *matrix, int n, int* rows, int* columns,int* values){
+    int non_zeros = 0, count = 0;
+    // add the non zeros of each row
+    for(int i = 0 ; i < n; ++i){
+        non_zeros += matrix[i].non_zeros;
+    }
+    rows = malloc(non_zeros*sizeof(int));
+    columns = malloc(non_zeros*sizeof(int));
+    values = malloc(non_zeros*sizeof(int));
+    for(int i = 0; i < n; ++i){
+        for(int j = 0; j < matrix[i].non_zeros; ++j){
+            rows[count] = i;
+            columns[count] = matrix[i].columns[j];
+            values[count] = matrix[i].values[j];
+            count++;
+        }
+    }
+}
+
 //trying to save as much memory as possible
 void saveResult(struct row* r, int col, int v){
     if(r->non_zeros == 0){
@@ -73,7 +94,7 @@ int main(int argc, char *argv[]){
     rowsA = malloc(mm_non_zeros*sizeof(int));
     colsA = malloc(mm_non_zeros*sizeof(int));
     valA = malloc(mm_non_zeros*sizeof(int));
-    //memset(c,0, ROW_COUNT*sizeof(int)); //just in case
+    memset(c,0, ROW_COUNT*sizeof(int)); //just in case
     for(int i = 0; i < ROW_COUNT;++i){
         fscanf(c_f,"%lg",&read_temp);
         c[i] = (int) read_temp;
@@ -173,6 +194,13 @@ int main(int argc, char *argv[]){
     free(rowsA);
     free(colsA);
     free(valA);
+    /*
+    In case of converting back to COO, it can be done like this. It's just a memory rearrangement.
+
+    int *rowsMinor, *colsMinor, *valuesMinor;
+    CSCtoCOO(minor, CLUSTERS, rowsMinor, colsMinor, valuesMinor);
+    
+    */
     for(int i = 0; i < CLUSTERS;++i){
         free(minor[i].columns);
         free(minor[i].values);
