@@ -1,0 +1,9 @@
+logs/
+.vscode/
+*.o
+*.log
+*.out
+test*
+_minted*
+.cache/*
+compile_commands.json
