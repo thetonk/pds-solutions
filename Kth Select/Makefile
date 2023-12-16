@@ -11,10 +11,10 @@ RM = rm -f
 .PHONY: all main openmpi clean purge
 all: main openmpi
 
-main: main.c
-	$(CC) $^ -o test
+main: main.c include/utils.c
+	$(MPICC) $^ -o test
 
-openmpi: main-openmpi.c
+openmpi: main-openmpi.c include/utils.c
 	$(MPICC) $^ -o test-openmpi
 
 clean:
