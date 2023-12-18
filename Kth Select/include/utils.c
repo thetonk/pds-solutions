@@ -59,106 +59,6 @@ int quickselect(int* array, int l, int r, int k){
     }
 }
 
-//using Hoare's partitioning, to make as few swaps as possible
-/*int partitionMPI(int root, int *array, int l, int r){
-    //printf("l is %d r is %d\n", l ,r);
-    int pivot,position,rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    int i = l-1, j = r+1;
-    if(rank == root){
-        pivot = array[l+(r-l)/2];
-    }
-    //broadcast pivot
-    MPI_Bcast(&pivot, 1, MPI_INT, root, MPI_COMM_WORLD);
-    printf("pivot is %d! from process rank %d\n", pivot,rank);
-    while(true && i <= r && j >= l){
-        while(array[++i] < pivot);
-        while(array[--j] > pivot);
-        //printf("i is %d j is %d from process rank %d\n", i,j,rank);
-        //when pointers meet, this is the pivot's correct position
-        if(i>=j){
-            position = j;
-            break;
-        }
-        swap(&array[i], &array[j]);
-    }
-    //if(rank == root) position++;
-    printf("rank %d pivot local position is %d, with value: %d\n",rank,position,array[position]);
-    return position;
-}
-
-//using Lemuto's partitioning
-int partitionMPI2(int root, int *array, int l, int r){
-    //printf("l is %d r is %d\n", l ,r);
-    int pivot,position,rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    int i = l-1;
-    if(rank == root){
-        //pick last element
-        pivot = array[r];
-    }
-    //broadcast pivot
-    MPI_Bcast(&pivot, 1, MPI_INT, root, MPI_COMM_WORLD);
-    printf("pivot is %d! from process rank %d\n", pivot,rank);
-    for(int j = l; j < r; ++j){
-        if(array[j] <= pivot){
-            i++;
-            swap(&array[i], &array[j]);
-        }
-    }
-    i++;
-    swap(&array[r], &array[i]);
-    position = i;
-    printf("rank %d pivot local position is %d, with value: %d\n",rank,position,array[position]);
-    return position;
-}
-
-int quickselectMPI(int root, int *array, int l, int r, int k){
-    int pivot_local, pivot_global, rank,n_procs;
-    bool termination = false;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    PMPI_Comm_size(MPI_COMM_WORLD, &n_procs);
-    int localPivots[n_procs];
-    if(r >= l){
-        pivot_local = partitionMPI2(root,array,l,r);
-        printArray2(array, l,r);
-        MPI_Allreduce(&pivot_local, &pivot_global, 1, MPI_INT, MPI_SUM,MPI_COMM_WORLD);
-        MPI_Allgather(&array[pivot_local], 1, MPI_INT, localPivots,1, MPI_INT, MPI_COMM_WORLD);
-        printf("rank %d global pivot is %d\n", rank,pivot_global);
-        printf("rank %d gathered local pivots: ",rank );
-        printArray(localPivots, n_procs);
-        if(r == l && (k >= pivot_global && k <= pivot_global + n_procs)){
-            //MPI_Barrier(MPI_COMM_WORLD);
-            if(termination && r==l){
-                return array[l];
-            }
-            else{
-                //the selected value is one of the pivots, find it with quickselect
-                int value = quickselect(localPivots, 0, n_procs-1, k - pivot_global);
-                printf("value is %d!\n", value);
-                termination = true;
-                MPI_Bcast(&termination, 1, MPI_C_BOOL, rank, MPI_COMM_WORLD);
-                return value;
-            }
-        }
-        else if (pivot_global > k ){
-            //search left
-            printf("rank %d moving LEFT!\n", rank);
-            return quickselectMPI(root, array, l, pivot_local-1,k);
-        }
-        else{
-            //search right
-            printf("rank %d moving RIGHT!\n", rank);
-            return quickselectMPI(root, array, pivot_local+1, r, k);
-        }
-    }
-    else{
-        printf("error on rank %d. l is %d, r is %d\n",rank, l ,r);
-        MPI_Abort(MPI_COMM_WORLD, 1);
-        return -1;
-    }
-}*/
-
 int quickselectMPI2(int root, int *array, int arraySize, int l, int r, int k){
     int pivot, position, rank, smallerCount=0, pivotDupes=0;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -224,10 +124,11 @@ int quickselectMPI2(int root, int *array, int arraySize, int l, int r, int k){
     }
     // otherwise, start splitting, oh boy, here comes the "sun" :( ...
     if (k < global_position){
-        return quickselectMPI2(root, array, arraySize, l,  smallerCount-1, k);
+        if(array[smallerCount] == pivot) return quickselectMPI2(root, array, arraySize, l,  smallerCount-pivotDupes, k);
+        return quickselectMPI2(root, array, arraySize, l, smallerCount, k);
     }
     else{
-        if(array[smallerCount] == pivot) return quickselectMPI2(root, array, arraySize,smallerCount+1, r,k);
+        if(array[smallerCount] == pivot) return quickselectMPI2(root, array, arraySize,smallerCount+pivotDupes, r,k);
         return quickselectMPI2(root, array, arraySize,smallerCount, r, k);
     }
 }
