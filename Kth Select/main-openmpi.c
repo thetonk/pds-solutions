@@ -3,12 +3,12 @@
 #include <mpi.h>
 #include "include/utils.h"
 
-//remind me to never write code using mpi again, you better kill me if I do.
+//remind me to never write code using mpi again.
 
 int main(int argc, char* argv[]){
-    int n_procs, my_rank, root = 0, elements = 6,k_select=5, value, chunkSize;
+    int n_procs, my_rank, root = 0, elements = 6,k_select=5, value, chunkSize, leftovers, elementsPerProcess;
     double max_time, min_time, avg_time, local_time, start, stop;
-    int* data = NULL;
+    int *data = NULL, *send_counts = NULL, *displacements = NULL;
     char *inputFilePath;
     //initial data loading and argument parsing
     if (argc < 4) {
@@ -38,15 +38,26 @@ int main(int argc, char* argv[]){
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &n_procs);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-    chunkSize = elements/n_procs;
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Hello from processor %s, rank %d out of %d processors\n",processor_name, my_rank, n_procs);
     //prepare for deployment, synchronize at start
+    //Distribute the data, leftovers as well
+    elementsPerProcess = elements / n_procs;
+    leftovers = elements % n_procs;
+    chunkSize = (my_rank < leftovers)? elementsPerProcess + 1 : elementsPerProcess;
+    send_counts = malloc(n_procs*sizeof(int));
+    displacements = malloc(n_procs*sizeof(int));
+    int currDisplacement = 0;
+    for(int i = 0; i < n_procs;++i){
+        send_counts[i] = (i < leftovers)? elementsPerProcess +1 : elementsPerProcess;
+        displacements[i] = currDisplacement;
+        currDisplacement += send_counts[i];
+    }
     int* local_data = malloc((chunkSize)*sizeof(int));
-    //scatter data to distributed memory
-    MPI_Scatter(data, chunkSize, MPI_INT, local_data, chunkSize, MPI_INT, root, MPI_COMM_WORLD);
+    //scatter data to distributed memory, even when they're not split even
+    MPI_Scatterv(data,send_counts, displacements,MPI_INT, local_data, chunkSize,MPI_INT, root, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
     if(my_rank == root){
         printf("-------------------------QUICKSELECT MPI START-------------------------\n");

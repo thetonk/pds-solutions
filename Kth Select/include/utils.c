@@ -81,10 +81,6 @@ int quickselectMPI2(int root, int *array, int arraySize, int l, int r, int k){
             pivot = array[r];
         }
     }
-    else{
-        //if ( rank != root && r < 0) local_min = array[l];
-        //else if (rank != root && l > r) local_min = array[r];
-    }
     printf("rank %d; r = %d, l = %d\n", rank,r, l);
     //subarray overflow
     MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
@@ -125,10 +121,20 @@ int quickselectMPI2(int root, int *array, int arraySize, int l, int r, int k){
     // otherwise, start splitting, oh boy, here comes the "sun" :( ...
     if (k < global_position){
         if(array[smallerCount] == pivot) return quickselectMPI2(root, array, arraySize, l,  smallerCount-pivotDupes, k);
+        if(rank != root && smallerCount - l > r - l){
+            // #HACK out of bounds
+            printf("rank %d: REBOUNDING!\n", rank);
+            return quickselectMPI2(root, array, arraySize, l, r, k);
+        }
         return quickselectMPI2(root, array, arraySize, l, smallerCount, k);
     }
     else{
         if(array[smallerCount] == pivot) return quickselectMPI2(root, array, arraySize,smallerCount+pivotDupes, r,k);
+        if(rank != root && r - smallerCount > r - l){
+            // #HACK out of bounds
+            printf("rank %d: REBOUNDING!\n", rank);
+            return quickselectMPI2(root, array,arraySize, l, r, k);
+        }
         return quickselectMPI2(root, array, arraySize,smallerCount, r, k);
     }
 }
