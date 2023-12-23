@@ -64,7 +64,7 @@ int quickselectMPI2(int root, int *array, int arraySize, int l, int r, int k){
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     int global_min, global_max, global_position, global_pivotDupes;
     int local_min = INT_MAX, local_max = INT_MIN;
-    if (r >= l){
+    if ( l >-1 && r >= l){
         printf("rank %d: ", rank);
         printArray2(array, l, r);
         //get min and max of other subarrays
@@ -120,21 +120,51 @@ int quickselectMPI2(int root, int *array, int arraySize, int l, int r, int k){
     }
     // otherwise, start splitting, oh boy, here comes the "sun" :( ...
     if (k < global_position){
-        if(array[smallerCount] == pivot) return quickselectMPI2(root, array, arraySize, l,  smallerCount-pivotDupes, k);
-        if(rank != root && smallerCount - l > r - l){
-            // #HACK out of bounds
-            printf("rank %d: REBOUNDING!\n", rank);
-            return quickselectMPI2(root, array, arraySize, l, r, k);
+        if(rank == root){
+            //pivot is the smallest element, elements of root array are depleted
+            if(smallerCount == 0) return quickselectMPI2(root, array, arraySize, l, -1, k);
+            //pivot is the largest element, elements of root array are depleted
+            //else if (smallerCount == (r-l)+1) return quickselectMPI2(root, array, arraySize, r+1, r, k);
+            else{
+                int p;
+                //select one element not equal to pivot, otherwise it will get stuck
+                for(p = r; p >= l; p--){
+                    if(array[p] < pivot) break;
+                }
+                return quickselectMPI2(root, array, arraySize, l, p,k);
+            }
         }
-        return quickselectMPI2(root, array, arraySize, l, smallerCount, k);
+        else{
+            if(position - l > r - l){
+                printf("rank %d: REBOUNDING!\n", rank);
+                return quickselectMPI2(root, array, arraySize, l, r, k);
+            }
+            if(array[position] == pivot) return quickselectMPI2(root, array, arraySize, l, position-1, k);
+            return quickselectMPI2(root, array, arraySize, l, position, k);
+        }
     }
     else{
-        if(array[smallerCount] == pivot) return quickselectMPI2(root, array, arraySize,smallerCount+pivotDupes, r,k);
-        if(rank != root && r - smallerCount > r - l){
-            // #HACK out of bounds
-            printf("rank %d: REBOUNDING!\n", rank);
-            return quickselectMPI2(root, array,arraySize, l, r, k);
+        if(rank == root){
+            //pivot is the smallest element, elements of root array are depleted
+            //if(smallerCount == 0) return quickselectMPI2(root, array, arraySize, l, -1, k);
+            //pivot is the largest element, elements of root array are depleted
+            if (smallerCount == arraySize-1) return quickselectMPI2(root, array, arraySize, r+1, r, k);
+            else{
+                int p;
+                //select one element not equal to pivot, otherwise it will get stuck
+                for(p = l; p <= r; p++){
+                    if(array[p] > pivot) break;
+                }
+                return quickselectMPI2(root, array, arraySize, p, r,k);
+            }
         }
-        return quickselectMPI2(root, array, arraySize,smallerCount, r, k);
+        else{
+            if(r - position > r - l){
+                printf("rank %d: REBOUNDING!\n", rank);
+                return quickselectMPI2(root, array,arraySize, l, r, k);
+            }
+            if(array[position] == pivot) return quickselectMPI2(root, array, arraySize, position+1, r, k);
+            return quickselectMPI2(root, array, arraySize,position, r, k);
+        }
     }
 }
