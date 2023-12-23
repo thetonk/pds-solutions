@@ -20,11 +20,15 @@ int main(int argc, char* argv[]){
         inputFilePath = argv[1];
         elements = atoi(argv[2]);
         k_select = atoi(argv[3]) - 1;
+        if(k_select < 0 || k_select > elements - 1){
+            printf("Error! invalid k-th value. K-th value muse be positive and smaller or equal to the amount of elements.\n");
+            return 2;
+        }
     }
     FILE* file = fopen(inputFilePath,"r");
     if(file == NULL){
         printf("Error! File not found!\n");
-        return 2;
+        return 3;
     }
     data = malloc(elements*sizeof(int));
     // I could read in parallel (possible #TODO)
