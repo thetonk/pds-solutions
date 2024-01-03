@@ -3,7 +3,7 @@
 #include "include/utils.h"
 
 int main(int argc, char* argv[]){
-    int k = 5, elements = 6;
+    size_t k = 5, elements = 6;
     char *inputFilePath;
     if (argc < 4) {
         printf("Invalid argument count! Exiting!\n");
@@ -24,15 +24,15 @@ int main(int argc, char* argv[]){
         printf("Error! file not found!");
         return 3;
     }
-    int* vec = malloc(elements*sizeof(int));
+    uint32_t* vec = malloc(elements*sizeof(uint32_t));
     double read_temp;
     for(int i = 0; i < elements;++i){
         fscanf(file, "%lg", &read_temp);
-        vec[i] = (int) read_temp;
+        vec[i] = (uint32_t) read_temp;
     }
     fclose(file);
-    int value = quickselect(vec, 0, elements-1, k);
-    printf("The %d th smallest number is %d\n", k, value);
+    uint32_t value = quickselect(vec, 0, elements-1, k);
+    printf("The %zu th smallest number is %u\n", k, value);
     free(vec);
     return 0;
 }

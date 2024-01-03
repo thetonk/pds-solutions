@@ -12,10 +12,14 @@ RM = rm -f
 all: main openmpi
 
 main: main.c include/utils.c
-	$(MPICC) $^ -o test
+	$(CC) $^ -o test
 
-openmpi: main-openmpi.c include/utils.c
-	$(MPICC) $^ -o test-openmpi
+openmpi: main-openmpi.c include/*.c
+	$(MPICC) $^ -o test-openmpi -lcurl
+
+#this is a test
+#curl-openmpi: curl-openmpi.c include/curlutils.c
+#	$(MPICC) $^ -o test-curl-openmpi -lcurl
 
 clean:
 	$(RM) *.o
