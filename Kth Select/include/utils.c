@@ -4,7 +4,7 @@
 
 void printCommandUsage(){
     printf("[USAGE] ./test-openmpi <input file path> <number of elements> <element position to search>\n");
-    printf("[USAGE] ./test-openmpi -l <URL> <number of elements> <element position to search>\n");
+    printf("[USAGE] ./test-openmpi -l <URL> <element position to search>\n");
     printf("[USAGE] ./test-openmpi -f <input file path> <number of elements> <element position to search>\n");
 }
 

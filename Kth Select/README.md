@@ -19,7 +19,17 @@ Dataset can be passed to program from the terminal, using the following syntax;
 
 `$ ./test-openmpi <input file path> <number of elements> <element position to search>`
 
-Please not that for the case of MPI, `mpirun` command is needed.
+You may call it using the following as well;
+
+- For local files
+
+`$ ./test-openmpi -f <input file path> <number of elements> <element position to search>`
+
+-  For remote files
+
+`$ ./test-openmpi -l <URL> <element position to search>`
+
+Please note that for the case of MPI, `mpirun` or `mpiexec` command is required.
 
 ## Deleting build files
 Simply call `make clean`.

@@ -12,7 +12,7 @@ RM = rm -f
 all: main openmpi
 
 main: main.c include/utils.c
-	$(CC) $^ -o test
+	$(MPICC) $^ -o test
 
 openmpi: main-openmpi.c include/*.c
 	$(MPICC) $^ -o test-openmpi -lcurl
