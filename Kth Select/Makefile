@@ -8,11 +8,11 @@ CC := gcc
 MPICC = mpicc
 RM = rm -f
 
-.PHONY: all main openmpi clean purge
+.PHONY: all main openmpi clean
 all: main openmpi
 
-main: main.c include/utils.c
-	$(MPICC) $^ -o test
+main: main.c include/*.c
+	$(MPICC) $^ -o test -lcurl
 
 openmpi: main-openmpi.c include/*.c
 	$(MPICC) $^ -o test-openmpi -lcurl
@@ -22,9 +22,6 @@ openmpi: main-openmpi.c include/*.c
 #	$(MPICC) $^ -o test-curl-openmpi -lcurl
 
 clean:
-	$(RM) *.o
-
-purge:
 	$(RM) *.o test*
 
 # end

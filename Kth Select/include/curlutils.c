@@ -7,6 +7,7 @@ size_t write_callback(void *data, size_t size, size_t nmemb, void *destination)
   STREAM *stream = (STREAM *)destination;
   // printf("size: %zu, nmemb: %zu\n", size, nmemb);
   size_t realsize = size * nmemb;
+  size_t byteAmount;
   // If first time calling, allocate the needed memory.
   if (stream->data == NULL)
   {
@@ -14,13 +15,17 @@ size_t write_callback(void *data, size_t size, size_t nmemb, void *destination)
   }
   if (stream->current_byte_size + realsize > stream->total_byte_size)
   {
-    printf("ERROR: OVERFLOW\n");
+    //end of stream reached, get the rest of bytes containing the integers and ignore the residuals (< 4 bytes left)
+    printf("Reached the residual bytes, ignoring them!\n");
     printf("Current size: %zu, Total size: %zu, realsize: %zu\n", stream->current_byte_size, stream->total_byte_size, realsize);
-    exit(1);
+    byteAmount = stream->total_byte_size - stream->current_byte_size;
   }
-  memcpy(&(stream->data[stream->current_byte_size]), data, realsize);
-  stream->current_byte_size += realsize;
-
+  else{
+    //get the whole thing
+    byteAmount = realsize;
+  }
+  memcpy(&(stream->data[stream->current_byte_size]), data, byteAmount);
+  stream->current_byte_size += byteAmount;
   return realsize;
 }
 
@@ -65,6 +70,45 @@ size_t getWikiInfo(const char *url, CURL *curl_handle)
   return (size_t)content_length;
 }
 
+ARRAY getWikiFull(const char *url){
+  CURL *curl_handle;
+  ARRAY result;
+  CURLcode res;
+  curl_global_init(CURL_GLOBAL_ALL);
+  curl_handle = curl_easy_init();
+  if(curl_handle){
+    size_t file_byte_size = getWikiInfo(url, curl_handle);
+    curl_easy_reset(curl_handle);
+    // Got size, convert to size_t.
+    printf("Got size: %zu\n", file_byte_size);
+    // Round out to multiples of 4 since element size is 32 bits (ignore remainder)
+    file_byte_size = (file_byte_size / 4) * 4;
+    // Partition is done using 32 bit ints as elements
+    size_t file_int_size = file_byte_size / 4;
+    printf("Total integers: %zu\n", file_int_size);
+    STREAM stream;
+    stream.data = NULL;
+    stream.current_byte_size = 0;
+    stream.total_byte_size = file_byte_size;
+    // Request body and set rest of options
+    curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&stream);
+    res = curl_easy_perform(curl_handle);
+    if (res != CURLE_OK){
+      printf("Problem in data reception\n");
+      exit(1);
+    }
+    printf("Sizes: %zu out of %zu bytes\n", stream.current_byte_size, file_byte_size);
+    result.size = file_int_size;
+    // "shallow" copy the data
+    result.data = (uint32_t *)stream.data;
+    curl_easy_cleanup(curl_handle);
+    curl_global_cleanup();
+  }
+  return result;
+}
+
 ARRAY getWikiPartition(const char *url, int world_rank, int world_size)
 {
   // Input checking
@@ -91,6 +135,7 @@ ARRAY getWikiPartition(const char *url, int world_rank, int world_size)
     file_byte_size = (file_byte_size / 4) * 4;
     // Partition is done using 32 bit ints as elements
     size_t file_int_size = file_byte_size / 4;
+    printf("Total integers: %zu\n", file_int_size);
     size_t start_byte = (file_int_size / world_size) * world_rank * 4;
     size_t end_byte = (file_int_size / world_size) * (world_rank + 1) * 4 - 1;
     // Last guy takes the remaining elements

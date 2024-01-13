@@ -25,7 +25,7 @@ int main(int argc, char* argv[]){
     //initial data loading and argument parsing
     if (argc < 4) {
         printf("Invalid argument count! Exiting!\n");
-        printCommandUsage();
+        printCommandUsage("test-openmpi");
         return 1;
     }
     else{
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]){
                     break;
                 default: //invalid parameter
                     printf("Invalid parameter! Exiting!\n");
-                    printCommandUsage();
+                    printCommandUsage("test-openmpi");
                     return 1;
             }
         }
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]){
             }
             else{
                  printf("Invalid parameter! Exiting!\n");
-                 printCommandUsage();
+                 printCommandUsage("test-openmpi");
                  return 1;
             }
         }
@@ -118,11 +118,11 @@ int main(int argc, char* argv[]){
     printf("rank %d selected value is %u\n",my_rank,value);
     printf("process with rank %d finished!\n", my_rank);
     MPI_Barrier(MPI_COMM_WORLD);
+    stop = MPI_Wtime();
+    local_time = stop - start;
     if(my_rank == root){
         printf("-------------------------QUICKSELECT MPI STOP-------------------------\n");
     }
-    stop = MPI_Wtime();
-    local_time = stop - start;
     //statistics
     MPI_Reduce(&local_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, root, MPI_COMM_WORLD);
     MPI_Reduce(&local_time, &min_time, 1, MPI_DOUBLE, MPI_MIN, root, MPI_COMM_WORLD);

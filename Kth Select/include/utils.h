@@ -24,13 +24,13 @@
 
 void swap(uint32_t *a, uint32_t *b);
 
-void printCommandUsage();
+void printCommandUsage(char *progname);
 
 void printArray(uint32_t *array, size_t n);
 
 void printArray2(uint32_t *array, int64_t l, int64_t r);
 
-int64_t partition(uint32_t *array, int64_t l, int64_t r);
+size_t partition(uint32_t *array, int64_t l, int64_t r);
 
 uint32_t quickselect(uint32_t *array, int64_t l, int64_t r, size_t k);
 
