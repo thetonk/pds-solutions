@@ -7,4 +7,6 @@ data/
 test*
 _minted*
 .cache/*
+*.bib
+*.bbl
 compile_commands.json
