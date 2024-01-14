@@ -1,4 +1,4 @@
-% Created 2024-01-13 Sat 19:03
+% Created 2024-01-14 Sun 14:51
 % Intended LaTeX compiler: xelatex
 \documentclass[11pt]{article}
 \usepackage{graphicx}
@@ -30,19 +30,19 @@
 \maketitle
 
 \section{Summary}
-\label{sec:orga8d05a3}
+\label{sec:org17195b2}
 This report is about my proposed solution for Kth Select problem. To be more specific, here are briefly presented and explained the algorithms I have implemented for my approach for both single process and multiple processes with distributed memory use cases. Additionally, the efficiency of MPI algorithm against various large datasets will be examined for different amount of processes, and MPI's effectiveness itself when it comes to distributing processes among several compute instances. The source code, building instructions and how to pass arguments to the compiled binary can be found \href{https://github.com/thetonk/pds-solutions/tree/main/Kth\%20Select}{\emph{in this repository}} and its \href{https://github.com/thetonk/pds-solutions/blob/main/Kth\%20Select/README.md}{\emph{README}}.
 
 \section{Algorithm}
-\label{sec:orgb59a8d7}
+\label{sec:orga8ebf0e}
 \subsection{The problem}
-\label{sec:org599f0f9}
+\label{sec:org7b1bcfd}
 The problem is stated like this: ``In a vector of unsorted elements, find which element would be in the k-th position if the vector was sorted in ascending order''.
 \subsection{Approach}
-\label{sec:org3c01fd1}
+\label{sec:org17cddb6}
 \subsubsection{Sequential}
-\label{sec:orge224e3d}
-The most effective algorithm to address this problem is QuickSelect. QuickSelect is very similar to QuickSort. A pivot element is selected from the array, and after using the \texttt{partition} function. The Lomuto's partitioning scheme was selected for the sake of simplicity. As a result, array is splitted in two sub-arrays;
+\label{sec:org00dbb74}
+The most effective algorithm to address this problem is QuickSelect. QuickSelect is very similar to QuickSort. A pivot element is selected from the array and placed in the correct position within the array, after using the \texttt{partition} function. Lomuto's partitioning scheme was selected for the sake of simplicity. As a result, array is splitted in two sub-arrays;
 \begin{itemize}
 \item A sub-array containing elements which are smaller or equal to the pivot.
 \item A sub-array containing elements larger than pivot.
@@ -51,7 +51,7 @@ Here is the point where QuickSelect differs from QuickSort. Instead of recursing
 
 It can be proven that the average time complexity is linear (\(\mathcal{O}(n)\)), and square (\(\mathcal{O}(n^{2})\)) in the worst case where the array is already sorted \autocite{quickselect}.
 \subsubsection{Parallel / Distributed Memory}
-\label{sec:orgced3155}
+\label{sec:orgdc3a1f2}
 Since QuickSelect appears to be that fast when a single process is used, I attempted to create an implementation for distributed systems using the MPI library. In such a distributed memory environment, MPI is currently the only way to go. As a result, since shared memory between processes is completely absent, the task of implementing the quickselect algorithm in such a stable way may get very challenging for the following reasons;
 \begin{itemize}
 \item Starvation of root process. The process who controls the other processes (also known as the root process) by advertising the pivot, may run out of elements and therefore rely on the elements of the other processes to find the pivot element that should be picked correctly. As a result, there will be an overhead of processes communicating with each other, especially when processes are on different computers.
@@ -82,32 +82,32 @@ Taking the above points into consideration the QuickSelect was modified. The beh
 \end{enumerate}
 \pagebreak
 \section{Test Specifications}
-\label{sec:orgcbabfd9}
-Please take note that on the following processing times the duration of the initial overhead was not taken into account. The following operations were considered as ``overhead'', as it may be seen from source code;
+\label{sec:org7b7d8b9}
+Please note that on the following processing times the duration of the initial overhead was not taken into account. The following operations were considered as ``overhead'', as it may be seen from source code;
 \begin{itemize}
 \item I/O Operations. The file reading and downloading time, and printing download status to the \texttt{stdout}, since data fetching and no actual processing is taking place.
 \item Data structures creation and population. In other words, the initial memory allocation and data loading into the array.
 \item MPI initialization and preparation.
 \end{itemize}
 \subsection{System Specifications}
-\label{sec:orgc231db1}
+\label{sec:org4bf409e}
 For the production of all the following results, Aristotle University of Thessaloniki (AUTh) High Performance Computing Infrastructure was used. The operating system in charge is CentOS. \autocite{hpc-resources}
 \subsubsection{Sequential}
-\label{sec:org3a76d4b}
+\label{sec:org83aeb5e}
 Sequential jobs were submitted to the HPC's login nodes, since they had more than enough resources for this task. Their resources had the following specifications, processing power wise;
 \begin{itemize}
 \item 2 x AMD EPYC 7302 @ 3.00 GHz (16 cores, 32 threads)
 \item 64 GB RAM
 \end{itemize}
 \subsubsection{Parallel / Distributed}
-\label{sec:org0bac350}
+\label{sec:org218b544}
 Distributed jobs were submitted to the \emph{rome} partition of HPC, since it was proven ideal for parallel tasks. Its resources had the following specifications, processing power wise;
 \begin{itemize}
 \item AMD EPYC 7662 @ 2.00 GHz (64 cores, 128 threads) \autocite{hpc-resources}
 \item At least 1.95 GB per CPU
 \end{itemize}
 \subsection{Test Dataset Specifications}
-\label{sec:org97ea941}
+\label{sec:org71b0aba}
 \begin{center}
 \begin{tabular}{llr}
 \hline
@@ -120,19 +120,36 @@ Name & File Size & 32-bit Integer Count\\[0pt]
 \end{center}
 \pagebreak
 \section{Results}
-\label{sec:org8819300}
-\subsection{Charts}
-\label{sec:org646e005}
-\subsubsection{Greek Wiki Dump}
-\label{sec:orgf1c4792}
+\label{sec:orgaceb5ec}
+The following results refer to the selection of the middle element of each array.
+\subsection{Sequential}
+\label{sec:org7ea6a36}
+\begin{center}
+\begin{tabular}{lr}
+\hline
+Name & Processing Time (s)\\[0pt]
+\hline
+\href{https://dumps.wikimedia.org/other/static\_html\_dumps/current/el/wikipedia-el-html.tar.7z}{Greek Wiki Dump} & 0.505709\\[0pt]
+\href{https://developer.download.nvidia.com/compute/cuda/12.0.0/local\_installers/cuda\_12.0.0\_525.60.13\_linux.run}{NVIDIA CUDA 12 Linux Runfile} & 26.06861\\[0pt]
+\hline
+\end{tabular}
+\end{center}
+\subsection{Parallel / Distributed}
+\label{sec:orgdbe6791}
+\subsubsection{Charts}
+\label{sec:orge6f1060}
+\begin{enumerate}
+\item Greek Wiki Dump
+\label{sec:org8c3bb82}
 \begin{center}
 \includegraphics[height=200]{./charts/greek-wiki-dump/processing-time-nodes.png}
 \end{center}
 \begin{center}
 \includegraphics[height=200]{./charts/greek-wiki-dump/process-distribution-effectiveness.png}
 \end{center}
-\subsubsection{NVIDIA CUDA 12 Linux Runfile}
-\label{sec:org2b236fe}
+\pagebreak
+\item NVIDIA CUDA 12 Linux Runfile
+\label{sec:org5bdecd4}
 \begin{center}
 \includegraphics[height=200]{./charts/cuda-12-runfile/processing-time-nodes.png}
 \end{center}
@@ -140,5 +157,6 @@ Name & File Size & 32-bit Integer Count\\[0pt]
 \includegraphics[height=200]{./charts/cuda-12-runfile/process-distribution-effectiveness.png}
 \end{center}
 
-\printbibliography
+\printbibliography[heading=bibnumbered]
+\end{enumerate}
 \end{document}

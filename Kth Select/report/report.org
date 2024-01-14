@@ -16,7 +16,7 @@ This report is about my proposed solution for Kth Select problem. To be more spe
 The problem is stated like this: "In a vector of unsorted elements, find which element would be in the k-th position if the vector was sorted in ascending order".
 ** Approach
 *** Sequential
-The most effective algorithm to address this problem is QuickSelect. QuickSelect is very similar to QuickSort. A pivot element is selected from the array, and after using the =partition= function. The Lomuto's partitioning scheme was selected for the sake of simplicity. As a result, array is splitted in two sub-arrays;
+The most effective algorithm to address this problem is QuickSelect. QuickSelect is very similar to QuickSort. A pivot element is selected from the array and placed in the correct position within the array, after using the =partition= function. Lomuto's partitioning scheme was selected for the sake of simplicity. As a result, array is splitted in two sub-arrays;
 - A sub-array containing elements which are smaller or equal to the pivot.
 - A sub-array containing elements larger than pivot.
 Here is the point where QuickSelect differs from QuickSort. Instead of recursing on both subarrays, we recurse on the subarray where the k-th is included. For example, if k is larger than the position of pivot, then we recurse to the sub-array containing the elements larger than pivot. Finally, the algorithm stops when k is equal to the position of pivot element. In that case, the problem is solved, we found the k-th smallest element.
@@ -43,7 +43,7 @@ Taking the above points into consideration the QuickSelect was modified. The beh
       2. If the process is not the root, and the global position is out of the bounds of the current array, it is considered depleted and recurses into the same array (idles). Otherwise, if the element at the global position is equal to pivot, recurse on the right sub-array, excluding the element equal to pivot. If larger than pivot, then again recurse on the right sub-array but contain the element as well.
 \pagebreak
 * Test Specifications
-Please take note that on the following processing times the duration of the initial overhead was not taken into account. The following operations were considered as "overhead", as it may be seen from source code;
+Please note that on the following processing times the duration of the initial overhead was not taken into account. The following operations were considered as "overhead", as it may be seen from source code;
 - I/O Operations. The file reading and downloading time, and printing download status to the =stdout=, since data fetching and no actual processing is taking place.
 - Data structures creation and population. In other words, the initial memory allocation and data loading into the array.
 - MPI initialization and preparation.
@@ -66,16 +66,26 @@ Distributed jobs were submitted to the /rome/ partition of HPC, since it was pro
 |------------------------------+-----------+----------------------|
 \pagebreak
 * Results
-** Charts
-*** Greek Wiki Dump
+The following results refer to the selection of the middle element of each array.
+** Sequential
+|------------------------------+---------------------|
+| Name                         | Processing Time (s) |
+|------------------------------+---------------------|
+| [[https://dumps.wikimedia.org/other/static_html_dumps/current/el/wikipedia-el-html.tar.7z][Greek Wiki Dump]]              |            0.505709 |
+| [[https://developer.download.nvidia.com/compute/cuda/12.0.0/local_installers/cuda_12.0.0_525.60.13_linux.run][NVIDIA CUDA 12 Linux Runfile]] |            26.06861 |
+|------------------------------+---------------------|
+** Parallel / Distributed
+*** Charts
+**** Greek Wiki Dump
 #+ATTR_LATEX: :float nil :height 200
 [[./charts/greek-wiki-dump/processing-time-nodes.png]]
 #+ATTR_LATEX: :float nil :height 200
 [[./charts/greek-wiki-dump/process-distribution-effectiveness.png]]
-*** NVIDIA CUDA 12 Linux Runfile
+\pagebreak
+**** NVIDIA CUDA 12 Linux Runfile
 #+ATTR_LATEX: :float nil :height 200
 [[./charts/cuda-12-runfile/processing-time-nodes.png]]
 #+ATTR_LATEX: :float nil :height 200
 [[./charts/cuda-12-runfile/process-distribution-effectiveness.png]]
 
-#+PRINT_BIBLIOGRAPHY:
+#+PRINT_BIBLIOGRAPHY: :heading bibnumbered
