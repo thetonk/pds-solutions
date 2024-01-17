@@ -51,7 +51,7 @@ int main(int argc, char *argv[]){
             break;
         case 3:
             elementsPerRow = atoi(argv[1]);
-            epochs = atoi(argv[3]);
+            epochs = atoi(argv[2]);
             break;
         case 2:
             elementsPerRow = atoi(argv[1]);
@@ -62,19 +62,20 @@ int main(int argc, char *argv[]){
     next_lattice_state = malloc(elementsPerRow*elementsPerRow*sizeof(int8_t));
     srand(seed);
     generateRandomLattice(current_lattice_state, elementsPerRow);
-    printLattice(current_lattice_state, elementsPerRow);
-    sleep(5);
+    //printLattice(current_lattice_state, elementsPerRow);
+    //sleep(5);
     for(size_t i = 0; i < epochs; ++i){
-        printf("=========================================================\n");
+        //printf("=========================================================\n");
         calculateNextLattice(current_lattice_state, next_lattice_state, elementsPerRow);
         //lazily set next lattice state as the new one
         temp = current_lattice_state;
         current_lattice_state = next_lattice_state;
         next_lattice_state = temp;
-        system("clear");
-        printLattice(current_lattice_state, elementsPerRow);
-        sleep(1);
+        //system("clear");
+        //printLattice(current_lattice_state, elementsPerRow);
+        //sleep(1);
     }
+    printLattice(current_lattice_state, elementsPerRow);
     free(current_lattice_state);
     free(next_lattice_state);
     return 0;

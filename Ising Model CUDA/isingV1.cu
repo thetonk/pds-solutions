@@ -1,7 +1,7 @@
-#include <cstdlib>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <unistd.h>
@@ -36,12 +36,14 @@ __global__ void cuda_hello(){
 
 __global__ void calculateNextLattice(int8_t *curLattice, int8_t *nexLattice, size_t n){
     size_t elementID = blockDim.x*blockIdx.x + threadIdx.x;
-    size_t row = elementID / N, column = elementID % N;
+    size_t row = elementID / n, column = elementID % n;
     int8_t sum;
-    sum = curLattice[n*row + column] + curLattice[n*getIndex(row-1, n) + column] + curLattice[n*getIndex(row+1, n) + column] +
+    if(elementID < n*n){
+        sum = curLattice[n*row + column] + curLattice[n*getIndex(row-1, n) + column] + curLattice[n*getIndex(row+1, n) + column] +
                 curLattice[n*row + getIndex(column -1, n)] +curLattice[n*row + getIndex(column+1, n)];
-    //calculate sign
-    nexLattice[n*row + column] = (sum >= 0) ? 1 : -1;
+        //calculate sign
+        nexLattice[n*row + column] = (sum >= 0) ? 1 : -1;
+    }
     //printf("element id: %lu row %lu column %lu value: %d\n", elementID,row, column, nexLattice[n*row + column]);
 }
 
@@ -66,11 +68,22 @@ int main(int argc, char *argv[]){
             elementsPerRow = atoi(argv[1]);
             block_size = atoi(argv[2]);
             break;
+        case 2:
+            elementsPerRow = atoi(argv[1]);
+            break;
+    }
+    if(block_size > 1024){
+        //block too large, aborting
+        printf("Error! Each block contains max 1024 threads! Aborting!\n");
+        return 1;
     }
     //round up block count
     //assume square lattice
-    const size_t block_count = (elementsPerRow*elementsPerRow+BLOCK_SIZE-1)/BLOCK_SIZE;
+    const size_t block_count = (elementsPerRow*elementsPerRow+block_size-1)/block_size;
     const size_t size = elementsPerRow*elementsPerRow*sizeof(int8_t);
+    struct timeval start,stop;
+    long secondsElapsed, microsecondsElapsed;
+    double time;
     //cuda_hello<<<1,32>>>();
     srand(seed);
     host_lattice = (int8_t*) malloc(size);
@@ -78,9 +91,10 @@ int main(int argc, char *argv[]){
     cudaMalloc(&current_lattice_state, size);
     cudaMalloc(&next_lattice_state, size);
     cudaMemcpy(current_lattice_state, host_lattice, size, cudaMemcpyHostToDevice);
-    printLattice(host_lattice, N);
+    //printLattice(host_lattice, elementsPerRow);
     printf("AMOGUS\n");
     printf("creating %zu blocks of %zu threads!\n", block_count, block_size);
+    gettimeofday(&start, 0);
     for(size_t i = 0; i < epochs; ++i){
         calculateNextLattice<<< block_count, block_size >>>(current_lattice_state, next_lattice_state, elementsPerRow);
         cudaDeviceSynchronize();
@@ -89,7 +103,12 @@ int main(int argc, char *argv[]){
         next_lattice_state = temp;
     }
     cudaMemcpy(host_lattice, current_lattice_state, size, cudaMemcpyDeviceToHost);
-    printLattice(host_lattice, elementsPerRow);
+    gettimeofday(&stop, 0);
+    secondsElapsed = stop.tv_sec - start.tv_sec;
+    microsecondsElapsed = stop.tv_usec - start.tv_usec;
+    time = secondsElapsed + 1e-6*microsecondsElapsed;
+    //printLattice(host_lattice, elementsPerRow);
+    printf("total time: %f seconds\n",time);
     cudaFree(current_lattice_state);
     cudaFree(next_lattice_state);
     free(host_lattice);
