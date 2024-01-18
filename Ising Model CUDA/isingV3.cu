@@ -5,7 +5,8 @@
 #include <stdint.h>
 #include <sys/time.h>
 
-#define BLOCK_SIZE 5
+//maximum value for BLOCK_SIZE is 32 (32x32 = 1024 threads)
+#define BLOCK_SIZE 16
 #define N 10
 
 void printLattice(int8_t *lattice, size_t n){
@@ -24,11 +25,11 @@ void generateRandomLattice(int8_t *lattice, size_t n){
         }
     }
 }
-__device__ int8_t getIndex(int8_t i, size_t n){
+__device__ size_t getIndex(int64_t i, size_t n){
     return i == -1 ? n-1 : i % n;
 }
 
-__global__ void calculateNextLattice3(int8_t *curLattice, int8_t *nexLattice,size_t n){
+__global__ void calculateNextLatticeV3(int8_t *curLattice, int8_t *nexLattice,size_t n){
     //this time, each thread has an element in the sub square of the lattice
     size_t blockRow = blockIdx.y*blockDim.y;
     size_t blockCol = blockIdx.x*blockDim.x;
@@ -71,30 +72,24 @@ __global__ void calculateNextLattice3(int8_t *curLattice, int8_t *nexLattice,siz
 int main(int argc, char *argv[]){
     //row major order will be followed
     int8_t *current_lattice_state, *next_lattice_state, *host_lattice, *temp;
-    size_t block_size=BLOCK_SIZE, elementsPerRow=N,seed=69, epochs=5;
+    size_t elementsPerRow=N,seed=404, epochs=5;
     //argument parsing
     switch(argc){
-        case 5:
-            elementsPerRow = atoi(argv[1]);
-            block_size = atoi(argv[2]);
-            epochs = atoi(argv[3]);
-            seed = atoi(argv[4]);
-            break;
         case 4:
             elementsPerRow = atoi(argv[1]);
-            block_size = atoi(argv[2]);
-            epochs = atoi(argv[3]);
+            epochs = atoi(argv[2]);
+            seed = atoi(argv[3]);
             break;
         case 3:
             elementsPerRow = atoi(argv[1]);
-            block_size = atoi(argv[2]);
+            epochs = atoi(argv[2]);
             break;
         case 2:
             elementsPerRow = atoi(argv[1]);
             break;
     }
     const size_t size = elementsPerRow*elementsPerRow*sizeof(int8_t);
-    //round up block count so everything can fit. Every thread this time handles an entire column of the lattice
+    //round up block count so everything can fit.
     const size_t block_count = (elementsPerRow+BLOCK_SIZE-1)/BLOCK_SIZE;
     dim3 grid(block_count,block_count);
     dim3 blocks(BLOCK_SIZE, BLOCK_SIZE);
@@ -108,11 +103,11 @@ int main(int argc, char *argv[]){
     struct timeval start,stop;
     long secondsElapsed, microsecondsElapsed;
     double totalTime;
-    printf("AMOGUS\n");
-    printf("creating %zu blocks containing %d threads each!\n", block_count*block_count, BLOCK_SIZE*BLOCK_SIZE);
+    //printf("AMOGUS\n");
+    //printf("creating %zu blocks containing %d threads each!\n", block_count*block_count, BLOCK_SIZE*BLOCK_SIZE);
     gettimeofday(&start, 0);
     for(size_t i = 0; i < epochs; ++i){
-        calculateNextLattice3<<< grid, blocks >>>(current_lattice_state, next_lattice_state, elementsPerRow);
+        calculateNextLatticeV3<<< grid, blocks >>>(current_lattice_state, next_lattice_state, elementsPerRow);
         //cudaDeviceSynchronize();
         //ping pong
         temp = current_lattice_state;
@@ -124,6 +119,7 @@ int main(int argc, char *argv[]){
     microsecondsElapsed = stop.tv_usec - start.tv_usec;
     secondsElapsed = stop.tv_sec - start.tv_sec;
     totalTime = secondsElapsed + 1e-6*microsecondsElapsed;
+    //comment out the following line to get output of lattice
     //printLattice(host_lattice, elementsPerRow);
     printf("total time: %f seconds.\n", totalTime);
     return 0;

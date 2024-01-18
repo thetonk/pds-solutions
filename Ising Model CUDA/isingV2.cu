@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <sys/time.h>
 
-#define BLOCK_SIZE 5
+#define BLOCK_SIZE 16
 #define N 10
 
 void printLattice(int8_t *lattice, size_t n){
@@ -24,7 +24,7 @@ void generateRandomLattice(int8_t *lattice, size_t n){
         }
     }
 }
-__device__ int8_t getIndex(int8_t i, size_t n){
+__device__ size_t getIndex(int64_t i, size_t n){
     return i == -1 ? n-1 : i % n;
 }
 
@@ -33,7 +33,7 @@ __global__ void calculateNextLattice(int8_t *curLattice, int8_t *nexLattice, siz
     int8_t sum;
     if(column < n){
         //thread is useful, make calculations
-        for(size_t row = 0; row < n; ++row){
+        for(int64_t row = 0; row < n; ++row){
             sum = curLattice[n*row + column] + curLattice[n*getIndex(row-1, n) + column] + curLattice[n*getIndex(row+1, n) + column] +
                 curLattice[n*row + getIndex(column -1, n)] +curLattice[n*row + getIndex(column+1, n)];
             //calculate sign
@@ -44,7 +44,7 @@ __global__ void calculateNextLattice(int8_t *curLattice, int8_t *nexLattice, siz
 }
 
 //for some reason is slower (not anymore)
-__global__ void calculateNextLattice2(int8_t *curLattice, int8_t *nexLattice,size_t n, size_t blockSize){
+__global__ void calculateNextLatticeV2(int8_t *curLattice, int8_t *nexLattice,size_t n, size_t blockSize){
     //this time, one thread has to work in one subsquare of lattice
     size_t blockRow = blockIdx.y*blockSize*n;
     size_t blockCol = blockIdx.x*blockSize;
@@ -71,23 +71,23 @@ __global__ void calculateNextLattice2(int8_t *curLattice, int8_t *nexLattice,siz
 int main(int argc, char *argv[]){
     //row major order will be followed
     int8_t *current_lattice_state, *next_lattice_state, *host_lattice, *temp;
-    size_t block_size=BLOCK_SIZE, elementsPerRow=N,seed=69, epochs=5;
+    size_t block_size=BLOCK_SIZE, elementsPerRow=N,seed=404, epochs=5;
     //argument parsing
     switch(argc){
         case 5:
             elementsPerRow = atoi(argv[1]);
-            block_size = atoi(argv[2]);
-            epochs = atoi(argv[3]);
+            epochs = atoi(argv[2]);
+            block_size = atoi(argv[3]);
             seed = atoi(argv[4]);
             break;
         case 4:
             elementsPerRow = atoi(argv[1]);
-            block_size = atoi(argv[2]);
-            epochs = atoi(argv[3]);
+            epochs = atoi(argv[2]);
+            block_size = atoi(argv[3]);
             break;
         case 3:
             elementsPerRow = atoi(argv[1]);
-            block_size = atoi(argv[2]);
+            epochs = atoi(argv[2]);
             break;
         case 2:
             elementsPerRow = atoi(argv[1]);
@@ -113,13 +113,11 @@ int main(int argc, char *argv[]){
     struct timeval start,stop;
     long secondsElapsed, microsecondsElapsed;
     double time;
-    printf("AMOGUS\n");
-    //printf("creating %zu blocks of %zu threads!\n", block_count, block_size);
-    printf("created %zu blocks containing %zu elements each!\n", block_count*block_count, block_size*block_size);
+    //printf("created %zu blocks containing %zu elements each!\n", block_count*block_count, block_size*block_size);
     gettimeofday(&start, 0);
     for(size_t i = 0; i < epochs; ++i){
         //calculateNextLattice<<<block_count, block_size>>>(current_lattice_state, next_lattice_state, elementsPerRow);
-        calculateNextLattice2<<<grid,1>>>(current_lattice_state, next_lattice_state, elementsPerRow, block_size);
+        calculateNextLatticeV2<<<grid,1>>>(current_lattice_state, next_lattice_state, elementsPerRow, block_size);
         //cudaDeviceSynchronize();
         //ping pong
         temp = current_lattice_state;
@@ -131,8 +129,9 @@ int main(int argc, char *argv[]){
     microsecondsElapsed = stop.tv_usec - start.tv_usec;
     secondsElapsed = stop.tv_sec - start.tv_sec;
     time = secondsElapsed + 1e-6*microsecondsElapsed;
+    //comment out the following line to get output of lattice
     //printLattice(host_lattice, elementsPerRow);
-    printf("time elapsed: %f seconds.\n",time);
+    printf("total time: %f seconds.\n",time);
     cudaFree(next_lattice_state);
     cudaFree(current_lattice_state);
     free(host_lattice);

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #define N 10
@@ -22,7 +23,7 @@ void generateRandomLattice(int8_t *lattice, size_t n){
     }
 }
 
-int8_t getIndex(int8_t i, size_t n){
+size_t getIndex(int64_t i, size_t n){
     return i == -1 ? n-1 : i % n;
 }
 
@@ -40,7 +41,7 @@ void calculateNextLattice(int8_t *curLattice, int8_t *nexLattice,size_t n){
 
 int main(int argc, char *argv[]){
     //row major order will be followed
-    size_t elementsPerRow = N, epochs = 5, seed = 69;
+    size_t elementsPerRow = N, epochs = 5, seed = 404;
     int8_t *current_lattice_state, *next_lattice_state, *temp;
     //argument parsing
     switch(argc){
@@ -61,9 +62,13 @@ int main(int argc, char *argv[]){
     current_lattice_state = malloc(elementsPerRow*elementsPerRow*sizeof(int8_t));
     next_lattice_state = malloc(elementsPerRow*elementsPerRow*sizeof(int8_t));
     srand(seed);
+    struct timeval start,stop;
+    long secondsElapsed, microsecondsElapsed;
+    double time;
     generateRandomLattice(current_lattice_state, elementsPerRow);
     //printLattice(current_lattice_state, elementsPerRow);
     //sleep(5);
+    gettimeofday(&start, 0);
     for(size_t i = 0; i < epochs; ++i){
         //printf("=========================================================\n");
         calculateNextLattice(current_lattice_state, next_lattice_state, elementsPerRow);
@@ -75,7 +80,13 @@ int main(int argc, char *argv[]){
         //printLattice(current_lattice_state, elementsPerRow);
         //sleep(1);
     }
-    printLattice(current_lattice_state, elementsPerRow);
+    gettimeofday(&stop, 0);
+    secondsElapsed = stop.tv_sec - start.tv_sec;
+    microsecondsElapsed = stop.tv_usec - start.tv_usec;
+    time = secondsElapsed + 1e-6*microsecondsElapsed;
+    //comment out the following line to get output of lattice
+    //printLattice(current_lattice_state, elementsPerRow);
+    printf("total time: %f seconds\n",time);
     free(current_lattice_state);
     free(next_lattice_state);
     return 0;
