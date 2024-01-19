@@ -34,10 +34,10 @@ __global__ void calculateNextLatticeV3(int8_t *curLattice, int8_t *nexLattice,si
     size_t blockRow = blockIdx.y*blockDim.y;
     size_t blockCol = blockIdx.x*blockDim.x;
     size_t localRow = threadIdx.y, localCol = threadIdx.x, globalRow, globalCol;
-    //populate shared memory with global memory data. Include the nearby cells of the subsquare since they will be needed
     globalCol = blockCol + localCol;
     globalRow = blockRow + localRow;
     //printf("block row %lu, global col %lu,global row: %lu, global col: %lu\n", blockRow,blockCol,globalRow, globalCol);
+    //populate shared memory with global memory data. Include the nearby cells of the subsquare since they will be needed
     //in order to read neighbours, our subsquare must be in the center. So we will need (BLOCK_SIZE+2)^2 total elements
     //in shared memory
     __shared__ int8_t subSquare[BLOCK_SIZE+2][BLOCK_SIZE+2];
@@ -103,7 +103,6 @@ int main(int argc, char *argv[]){
     struct timeval start,stop;
     long secondsElapsed, microsecondsElapsed;
     double totalTime;
-    //printf("AMOGUS\n");
     //printf("creating %zu blocks containing %d threads each!\n", block_count*block_count, BLOCK_SIZE*BLOCK_SIZE);
     gettimeofday(&start, 0);
     for(size_t i = 0; i < epochs; ++i){
