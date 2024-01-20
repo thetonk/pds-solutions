@@ -21,7 +21,7 @@ Thanks to its discrete nature, we may simulate the mentioned model using a cellu
 M_{k+1}[i][j] = sign(M_{k}[i,j] + M_{k}[i-1][j] + M_{k}[i+1][j] + M_{k}[i][j-1] + M_{k}[i][j+1])
 \end{equation}
 * Approach
-Please note that for all the following algorithms, the lattice matrix is represented using row-major order. That is, if we have a $n \times n$ matrix, the element $a_{ij}$ can be accessed using the following formula, avoiding the complexity of using double pointers.
+Please note that for all the following algorithms, the lattice matrix is represented using row-major order [cite:@enwiki:1161536790]. That is, if we have a $n \times n$ matrix, the element $a_{ij}$ can be accessed using the following formula, avoiding the complexity of using double pointers.
 \begin{equation}
 \label{eq:1}
 a_{ij} =  M_{n \times n}[i][j] = M_{n \times n}[n \cdot i + j]
@@ -68,7 +68,7 @@ In the shared memory 2D array, we must include all the elements of the sub-squar
 #+CAPTION: Shared memory array.
 [[./images/cuda-subsquare.png]]
 * Test specifications
-Please note that for the production of the following times, I/O operations like loading data to RAM or GPU memory is ommited. For the GPU runs, [[https://hpc.it.auth.gr/][Aristotelis-HPC]] (Aristotle University High-Performance Computing infrastructure) was used. To be exact, the CUDA was run to a NVIDIA Tesla P100 (12 GB VRAM) [cite:@hpc-resources]. For the sequential runs, an Intel Core i5-8300H @ 2.30 GHz (4 cores, 8 threads) was used.
+Please note that for the production of the following times, initial random state generation and I/O operations like loading data to RAM or GPU memory is ommited. For the GPU runs, [[https://hpc.it.auth.gr/][Aristotelis-HPC]] (Aristotle University High-Performance Computing infrastructure) was used. To be exact, the CUDA was run to a NVIDIA Tesla P100 (12 GB VRAM) [cite:@hpc-resources]. For the sequential runs, an Intel Core i5-8300H @ 2.30 GHz (4 cores, 8 threads) was used.
 * Results
 In the following results, N are the rows of square lattice and k the iterations. In addition, V2 and V3 were tested for block size equal to 16. In order to get maximum performance for each N, block size must be fine tuned by picking a value from 1 to 32, since 1024 threads are available for each block. For more detailed times of CUDA, please check the tables section.
 \pagebreak
@@ -85,7 +85,7 @@ In the following results, N are the rows of square lattice and k the iterations.
 \pagebreak
 **** CUDA
 #+ATTR_LATEX: :float nil :height 200
-#+CAPTION: Scaling efficiency of CUDA algorithms, N = 25000
+#+CAPTION: Scaling efficiency of CUDA algorithms, N = 2500
 [[./images/cuda-efficiency.png]]
 *** V2 optimal block size
 #+ATTR_LATEX: :float nil :height 200
@@ -93,34 +93,34 @@ In the following results, N are the rows of square lattice and k the iterations.
 [[./images/block-size-effect.png]]
 \pagebreak
 **  CUDA Tables
-#+caption: Performance of CUDA algorithms for increasing N and k = 50
-|-------+-----------+------------+-----------|
-|     N |    cudaV1 |     cudaV2 |    cudaV3 |
-|-------+-----------+------------+-----------|
-|   256 |  0.000792 |   0.012446 |  0.000418 |
-|   512 |  0.001701 |   0.021732 |  0.001039 |
-|  1024 |  0.005301 |   0.081199 |   0.00348 |
-|  2048 |  0.019266 |   0.291012 |   0.01173 |
-|  4096 |  0.074887 |   1.067174 |    0.0454 |
-|  8192 |  0.294068 |   4.245557 |  0.179794 |
-| 16384 |  1.166208 |  16.963191 |  0.717332 |
-| 32768 |  4.649675 |  67.834809 |  2.878595 |
-| 65536 | 18.582241 | 271.312043 | 11.475189 |
-|-------+-----------+------------+-----------|
+#+caption: Performance of CUDA algorithms for increasing N and k = 50, in seconds. Speedup compared to sequential
+|-------+-----------+------------+-----------+------------+------------+------------+------------|
+|     N |    cudaV1 |     cudaV2 |    cudaV3 | sequential | speedup V1 | speedup V2 | speedup V3 |
+|-------+-----------+------------+-----------+------------+------------+------------+------------|
+|   256 |  0.000792 |   0.012446 |  0.000418 |   0.108759 |        137 |          9 |        260 |
+|   512 |  0.001701 |   0.021732 |  0.001039 |   0.313754 |        184 |         14 |        302 |
+|  1024 |  0.005301 |   0.081199 |   0.00348 |   1.239513 |        234 |         15 |        356 |
+|  2048 |  0.019266 |   0.291012 |   0.01173 |   4.932072 |        256 |         17 |        420 |
+|  4096 |  0.074887 |   1.067174 |    0.0454 |  19.716256 |        263 |         18 |        434 |
+|  8192 |  0.294068 |   4.245557 |  0.179794 |  79.216957 |        269 |         19 |        441 |
+| 16384 |  1.166208 |  16.963191 |  0.717332 | 322.408843 |        276 |         19 |        449 |
+| 32768 |  4.649675 |  67.834809 |  2.878595 |            |            |            |            |
+| 65536 | 18.582241 | 271.312043 | 11.475189 |            |            |            |            |
+|-------+-----------+------------+-----------+------------+------------+------------+------------|
 
-#+caption: Scaling efficiency of CUDA algorithms for increasing k and N = 25000
-|-----+----------+------------+----------|
-|   k |   cudaV1 |     cudaV2 |   cudaV3 |
-|-----+----------+------------+----------|
-|  10 | 0.583251 |   7.953822 | 0.373243 |
-|  20 | 1.114602 |  15.841907 | 0.697427 |
-|  40 | 2.177255 |  31.601757 | 1.346061 |
-|  60 | 3.239398 |  47.365691 | 2.006996 |
-|  80 | 4.301688 |  63.137752 | 2.658596 |
-| 100 | 5.365758 |  78.914083 | 3.302425 |
-| 120 | 6.426835 |  94.682181 | 3.951027 |
-| 140 | 7.488585 |  110.47514 | 4.601881 |
-| 160 | 8.553132 | 126.247329 | 5.256477 |
-|-----+----------+------------+----------|
+#+caption: Scaling efficiency of CUDA algorithms for increasing k and N = 2500, in seconds. Speedup compared to sequential
+|-----+----------+----------+----------+------------+------------+------------+------------|
+|   k |   cudaV1 |   cudaV2 |   cudaV3 | sequential | speedup V1 | speedup V2 | speedup V3 |
+|-----+----------+----------+----------+------------+------------+------------+------------|
+|  10 | 0.006229 | 0.090122 | 0.004076 |   1.476218 |        237 |         16 |        362 |
+|  20 | 0.011678 | 0.177274 | 0.007373 |   2.948892 |        253 |         17 |        400 |
+|  40 | 0.022607 | 0.333522 | 0.013954 |   5.884672 |        260 |         18 |        422 |
+|  60 | 0.033550 | 0.507095 | 0.020553 |   8.820939 |        263 |         17 |        429 |
+|  80 | 0.044474 | 0.655744 | 0.027141 |   11.75787 |        264 |         18 |        433 |
+| 100 | 0.055405 | 0.818406 | 0.033747 |  14.861252 |        268 |         18 |        440 |
+| 120 | 0.065018 | 0.962793 | 0.040337 |  17.692676 |        272 |         18 |        439 |
+| 140 | 0.077054 | 1.123058 | 0.046943 |  20.574601 |        267 |         18 |        438 |
+| 160 | 0.087815 | 1.285326 | 0.053522 |  23.527411 |        268 |         18 |        440 |
+|-----+----------+----------+----------+------------+------------+------------+------------|
 
 #+PRINT_BIBLIOGRAPHY: :heading bibnumbered
