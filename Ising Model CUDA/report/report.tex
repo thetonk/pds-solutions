@@ -1,4 +1,4 @@
-% Created 2024-01-20 Sat 13:16
+% Created 2024-01-22 Mon 13:15
 % Intended LaTeX compiler: xelatex
 \documentclass[11pt]{article}
 \usepackage{graphicx}
@@ -30,23 +30,23 @@
 \maketitle
 
 \section{Summary}
-\label{sec:orge8ba27a}
+\label{sec:org95b2839}
 This report is about my proposed solutions for impelementing the Ising Model in both CPU and GPU. To be more specific, here are briefly presented and explained the algorithms I have implemented for my approach, for both single CPU process and GPU parallelization use cases. Moreover, we will examine the overall performance, efficiency and scalability of all algorithms using the required charts and tables. The source code, building instructions and the usage of the produced binaries are available in \href{https://github.com/thetonk/pds-solutions/tree/main/Ising\%20Model\%20CUDA}{\emph{this repository}} and its \href{https://github.com/thetonk/pds-solutions/blob/main/Ising\%20Model\%20CUDA/README.md}{\emph{README}}.
 
 \section{The model}
-\label{sec:org714d894}
+\label{sec:org344fd9e}
 \subsection{Introduction}
-\label{sec:org461d0e1}
+\label{sec:orgfebde99}
 The Ising Model is a statistical mechanics model for ferromagnetic materials. The model consists of discrete variables having only two possible values (-1,+1), representing the magnetic dipoles within the material. After finite time, it reaches an equilibrium with regions of positive and negative magnetic moments (spin). \autocite{enwiki:1191997935}
 \subsection{Simulation}
-\label{sec:orgc9bc6b7}
+\label{sec:orgd57c68f}
 Thanks to its discrete nature, we may simulate the mentioned model using a cellular automaton. This cellular automaton for its operation is using von-Neumann (cross) neighbouring \autocite{enwiki:1196338105}, periodic, cyclic, boundary conditions and the following rule applied for each cell, let k be the iterations;
 \begin{equation}
 \label{eq:2}
 M_{k+1}[i][j] = sign(M_{k}[i,j] + M_{k}[i-1][j] + M_{k}[i+1][j] + M_{k}[i][j-1] + M_{k}[i][j+1])
 \end{equation}
 \section{Approach}
-\label{sec:orgf701648}
+\label{sec:org3837ec8}
 Please note that for all the following algorithms, the lattice matrix is represented using row-major order \autocite{enwiki:1161536790}. That is, if we have a \(n \times n\) matrix, the element \(a_{ij}\) can be accessed using the following formula, avoiding the complexity of using double pointers.
 \begin{equation}
 \label{eq:1}
@@ -54,12 +54,12 @@ a_{ij} =  M_{n \times n}[i][j] = M_{n \times n}[n \cdot i + j]
 \end{equation}
 Last but not least, in order to reduce memory usage as much as possible, all lattice matrices contain 1 byte only integers.
 \subsection{Sequential}
-\label{sec:orgc995e3a}
+\label{sec:org6d19496}
 The sequential implementation is quite straightforward. First of all, two arrays are created, one for the current lattice state, and one for the next lattice state. Next, every element of next state lattice is calculated using the rule (\ref{eq:2}). Also a helper \texttt{temp} pointer is used to swap those two arrays on every iteration, in order the next state to be the current one and continue the calculations. The time complexity of this algorithm is \(\mathcal{O}(n^{2})\).
 \subsection{CUDA parallelism}
-\label{sec:org95ea536}
+\label{sec:org7258913}
 \subsubsection{V1}
-\label{sec:orgb83034f}
+\label{sec:orga43e6ce}
 For this version, we load array to the GPU global memory,and gets splitted into one-dimensional blocks. Each block contains a number of threads, and each thread is responsible for calculating the next lattice value of their corresponding element (one-to-one thread - element relationship). Therefore, there is no need for a double loop for this calculation anymore. Row, column and ID of the element can be found from the following snippet;
 \begin{minted}[breaklines=true,breakanywhere=true,linenos=true,fontsize=\scriptsize]{cuda}
 size_t elementID = blockDim.x*blockIdx.x + threadIdx.x;
@@ -67,8 +67,8 @@ size_t row = elementID / n, column = elementID % n;
 \end{minted}
 Afterwards, the logic is similar to sequential, but without the double loop, by directly reading from the GPU global memory.
 \subsubsection{V2}
-\label{sec:org55afa9a}
-For this version, in order to prepare for the final version version, lattice matrix is splitted using smaller squares. As a result, this time, two-dimensional blocks are required, with 1 thread each. Also, for V2 and V3 block size is the number of rows of the sub-square.
+\label{sec:orgac6d530}
+For this version, in order to prepare for the final V3 version, lattice matrix is splitted using smaller squares. As a result, this time, two-dimensional blocks are required, with 1 thread each. Also, for V2 and V3 block size is the number of rows of the sub-square.
 \begin{center}
 \includegraphics[height=120]{./images/cuda-square-split.png}
 \captionof{figure}{\label{fig:1}Splitting lattice matrix in smaller sub-squares}
@@ -82,7 +82,7 @@ size_t colIterations = n - blockCol < blockSize ? n- blockCol : blockSize;
 \end{minted}
 Again, like on V2, for the calculations we read directly from global memory. However, this algorithm isn't as efficient, since we use only 1 thread per square and not taking the most of GPU, but still much faster than sequential.
 \subsubsection{V3}
-\label{sec:orgde8bd2a}
+\label{sec:org4506336}
 For this version, we use again squares like on V2 as shown on figure \ref{fig:1}. This time, though, each element of the sub-square is assigned to a single thread, and calculations use the shared memory instead of the global. Thus, for this implementation we need again 2D blocks but with threads on both dimensions. With this implementation, like V1, there is no need for double loops, only checks whether we are within the limits of the lattice or not. The position of each element in the lattice matrix can be found by the following snippet;
 \begin{minted}[breaklines=true,breakanywhere=true,linenos=true,fontsize=\scriptsize]{cuda}
 size_t blockRow = blockIdx.y*blockDim.y;
@@ -93,7 +93,7 @@ globalRow = blockRow + localRow;
 \end{minted}
 \begin{enumerate}
 \item Shared memory storage design
-\label{sec:orgd7929df}
+\label{sec:org072b67c}
 
 In the shared memory 2D array, we must include all the elements of the sub-square, plus the neighboring elements of the sub-square. Also, for ease of calculations later, the elements of the subsquare must be in the middle, resulting in the following storage design. The elements in orange are the elements of the subsquare, and the elements in blue are the neighbors. In order to contain the neighbours of a \(m \times m\) square, a \((m+2) \times (m+2)\) square is needed.
 \begin{center}
@@ -102,46 +102,46 @@ In the shared memory 2D array, we must include all the elements of the sub-squar
 \end{center}
 \end{enumerate}
 \section{Test specifications}
-\label{sec:orgaacf3d7}
+\label{sec:org8c7a99a}
 Please note that for the production of the following times, initial random state generation and I/O operations like loading data to RAM or GPU memory is ommited. For the GPU runs, \href{https://hpc.it.auth.gr/}{Aristotelis-HPC} (Aristotle University High-Performance Computing infrastructure) was used. To be exact, the CUDA was run to a NVIDIA Tesla P100 (12 GB VRAM) \autocite{hpc-resources}. For the sequential runs, an Intel Core i5-8300H @ 2.30 GHz (4 cores, 8 threads) was used.
 \section{Results}
-\label{sec:org8d4d9ee}
+\label{sec:org8ef3c86}
 In the following results, N are the rows of square lattice and k the iterations. In addition, V2 and V3 were tested for block size equal to 16. In order to get maximum performance for each N, block size must be fine tuned by picking a value from 1 to 32, since 1024 threads are available for each block. For more detailed times of CUDA, please check the tables section.
 \pagebreak
 \subsection{Charts}
-\label{sec:orgc9a3eb2}
+\label{sec:org5d2f33f}
 \subsubsection{N variable, k constant}
-\label{sec:org92640e7}
+\label{sec:orgd05e883}
 \begin{center}
 \includegraphics[height=200]{./images/performance-overview.png}
 \captionof{figure}{Performance of sequential and CUDA implementations for k = 50}
 \end{center}
 \subsubsection{k variable, N constant}
-\label{sec:orga21fd82}
+\label{sec:org79d88cb}
 \begin{enumerate}
 \item Sequential
-\label{sec:org55f4fe8}
+\label{sec:org803c10c}
 \begin{center}
 \includegraphics[height=200]{./images/seq-efficiency.png}
 \captionof{figure}{Scaling efficiency for sequential algorithm, N = 2500}
 \end{center}
 \pagebreak
 \item CUDA
-\label{sec:org1b1f111}
+\label{sec:orgfc6cc0e}
 \begin{center}
 \includegraphics[height=200]{./images/cuda-efficiency.png}
 \captionof{figure}{Scaling efficiency of CUDA algorithms, N = 2500}
 \end{center}
 \end{enumerate}
 \subsubsection{V2 optimal block size}
-\label{sec:org70c7b46}
+\label{sec:org327346a}
 \begin{center}
 \includegraphics[height=200]{./images/block-size-effect.png}
 \captionof{figure}{Optimizing block size}
 \end{center}
 \pagebreak
 \subsection{CUDA Tables}
-\label{sec:org6a7c35e}
+\label{sec:org873d7bf}
 \begin{table}[htbp]
 \caption{Performance of CUDA algorithms for increasing N and k = 50, in seconds. Speedup compared to sequential}
 \centering

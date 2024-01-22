@@ -38,7 +38,7 @@ size_t row = elementID / n, column = elementID % n;
 #+end_src
 Afterwards, the logic is similar to sequential, but without the double loop, by directly reading from the GPU global memory.
 *** V2
-For this version, in order to prepare for the final version version, lattice matrix is splitted using smaller squares. As a result, this time, two-dimensional blocks are required, with 1 thread each. Also, for V2 and V3 block size is the number of rows of the sub-square.
+For this version, in order to prepare for the final V3 version, lattice matrix is splitted using smaller squares. As a result, this time, two-dimensional blocks are required, with 1 thread each. Also, for V2 and V3 block size is the number of rows of the sub-square.
 #+ATTR_LATEX: :float nil :height 120
 #+NAME: fig:1
 #+CAPTION: Splitting lattice matrix in smaller sub-squares

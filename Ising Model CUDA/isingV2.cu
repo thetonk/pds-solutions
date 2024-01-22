@@ -93,11 +93,6 @@ int main(int argc, char *argv[]){
             elementsPerRow = atoi(argv[1]);
             break;
     }
-    //if(block_size > 1024){
-        //block too large, aborting
-        //printf("Error! Each block contains max 1024 threads! Aborting!\n");
-        //return 1;
-    //}
     //assume square lattice
     const size_t size = elementsPerRow*elementsPerRow*sizeof(int8_t);
     //round up block count so everything can fit. Every thread this time handles an entire column of the lattice

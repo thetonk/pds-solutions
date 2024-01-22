@@ -36,7 +36,6 @@ __global__ void calculateNextLatticeV3(int8_t *curLattice, int8_t *nexLattice,si
     size_t localRow = threadIdx.y, localCol = threadIdx.x, globalRow, globalCol;
     globalCol = blockCol + localCol;
     globalRow = blockRow + localRow;
-    //printf("block row %lu, global col %lu,global row: %lu, global col: %lu\n", blockRow,blockCol,globalRow, globalCol);
     //populate shared memory with global memory data. Include the nearby cells of the subsquare since they will be needed
     //in order to read neighbours, our subsquare must be in the center. So we will need (BLOCK_SIZE+2)^2 total elements
     //in shared memory
